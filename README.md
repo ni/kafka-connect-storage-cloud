@@ -1,3 +1,12 @@
+**Attention: This is a fork of [Kafka Connect Connector for S3](https://github.com/confluentinc/kafka-connect-storage-cloud) for use in the NI SystemLink™ platform. Significant changes are:**
+
+- Whenever a new file is committed to S3, the sink publishes information about that file to a Kafka topic:
+  - Filename
+  - Number of rows in the file
+  - startOffset of the file
+
+---
+
 # Kafka Connect Connector for S3
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fconfluentinc%2Fkafka-connect-storage-cloud.svg?type=shield)](https://app.fossa.io/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fconfluentinc%2Fkafka-connect-storage-cloud?ref=badge_shield)
 
