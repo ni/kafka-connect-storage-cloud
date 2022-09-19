@@ -104,7 +104,7 @@ public class S3Storage implements Storage<S3SinkConnectorConfig, ObjectListing> 
                 : builder.withRegion(region);
     } else {
       builder = builder.withEndpointConfiguration(
-          new AwsClientBuilder.EndpointConfiguration(url, "us-east-1")
+          new AwsClientBuilder.EndpointConfiguration(url, region)
       );
     }
 
