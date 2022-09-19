@@ -120,7 +120,7 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
   public static final Password AWS_SECRET_ACCESS_KEY_DEFAULT = new Password(null);
 
   public static final String REGION_CONFIG = "s3.region";
-  public static final String REGION_DEFAULT = Regions.DEFAULT_REGION.getName();
+  public static final String REGION_DEFAULT = "us-east-1";
 
   public static final String ACL_CANNED_CONFIG = "s3.acl.canned";
   public static final String ACL_CANNED_DEFAULT = null;
