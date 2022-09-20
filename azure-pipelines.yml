@@ -3,6 +3,11 @@
 # this pipeline by name in its triggers. There isn't a way to trigger an AzDO pipeline sourced in AzDO
 # from a GitHub action, so this is a workaround.
 
+trigger:
+  branches:
+    include:
+      - master
+
 pool:
   name: DevCentral-Skyline
 
