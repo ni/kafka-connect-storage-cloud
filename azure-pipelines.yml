@@ -1,0 +1,16 @@
+# This pipeline triggers the real build pipeline in AzDO when it finishes running (todo: link).
+# We do this by creating an AzDO pipeline out of this pipeline, and then the real build pipeline references
+# this pipeline by name in its triggers. There isn't a way to trigger an AzDO pipeline sourced in AzDO
+# from a GitHub action, so this is a workaround.
+
+pool:
+  name: DevCentral-Skyline
+
+stages:
+  - stage: Build
+    jobs:
+    - job: build
+      steps:
+        - task: CmdLine@2
+          inputs:
+            script: 'echo hello world!' 
