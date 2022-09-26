@@ -37,7 +37,7 @@ public abstract class BaseConnectorNetworkIT extends BaseConnectorIT {
                 new BasicAWSCredentials(
                     System.getenv("ROOT_USER_ACCESS_KEY_ID"),
                     System.getenv("ROOT_USER_SECRET_ACCESS_KEY"))))
-        .withRegion("ap-south-1")
+        .withRegion("us-east-1")
         .build();
   }
 
