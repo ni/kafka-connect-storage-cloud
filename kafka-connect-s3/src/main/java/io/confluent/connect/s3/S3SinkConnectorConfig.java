@@ -19,7 +19,6 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.RegionUtils;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.SSEAlgorithm;
 import org.apache.kafka.common.Configurable;
@@ -115,7 +114,7 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
   public static final Password AWS_SECRET_ACCESS_KEY_DEFAULT = new Password(null);
 
   public static final String REGION_CONFIG = "s3.region";
-  public static final String REGION_DEFAULT = Regions.DEFAULT_REGION.getName();
+  public static final String REGION_DEFAULT = "us-east-1";
 
   public static final String ACL_CANNED_CONFIG = "s3.acl.canned";
   public static final String ACL_CANNED_DEFAULT = null;
