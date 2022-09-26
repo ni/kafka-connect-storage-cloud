@@ -116,7 +116,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   private static final Logger log = LoggerFactory.getLogger(S3SinkConnectorIT.class);
   private static final ObjectMapper jsonMapper = new ObjectMapper();
   // AWS configs
-  private static final String AWS_REGION = "us-west-2";
+  private static final String AWS_REGION = "us-east-1";
   private static final String AWS_CREDENTIALS_PATH = "AWS_CREDENTIALS_PATH";
   // local dir configs
   private static final String TEST_RESOURCES_PATH = "src/test/resources/";
