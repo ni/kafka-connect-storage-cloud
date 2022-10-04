@@ -174,7 +174,7 @@ but you will need to substitute these versions out based on the versions in the
 1. Cherry-pick all of our NI-specific commits from the archive branch. The first
    commit should have the message:
 
-   _Add CONTRIBUTING_NI_.
+   _Hardcode integration tests to us-east-1_.
 
    ```
    # git cherry-pick X^..Y where X is the first commit and Y is the latest on the archive branch you created above
