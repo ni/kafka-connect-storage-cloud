@@ -1,9 +1,12 @@
 **Attention: This is a fork of [Kafka Connect Connector for S3](https://github.com/confluentinc/kafka-connect-storage-cloud) for use in the NI SystemLink™ platform. Significant changes are:**
 
+This repo is based off of the `v10.1.1` tag from upstream.
+
 - Whenever a new file is committed to S3, the sink publishes information about that file to a Kafka topic:
   - Filename
   - Number of rows in the file
   - startOffset of the file
+- The integration tests assume that they are connecting to an S3 bucket in the `us-east-1` region
 
 ---
 

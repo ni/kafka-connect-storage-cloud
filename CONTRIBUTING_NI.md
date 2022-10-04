@@ -1,18 +1,21 @@
-# Contributing to NI-maintained fork of Kafka Connect Storage Cloud
-- [Contributing to NI-maintained fork of Kafka Connect Storage Cloud](#contributing-to-ni-maintained-fork-of-kafka-connect-storage-cloud)
+# Contributing to the NI-maintained fork of Kafka Connect Storage Cloud
+
+- [Contributing to the NI-maintained fork of Kafka Connect Storage Cloud](#contributing-to-the-ni-maintained-fork-of-kafka-connect-storage-cloud)
   - [Overview](#overview)
   - [How do I...](#how-do-i)
     - [Build this locally?](#build-this-locally)
     - [Integrate a new release of kafka-connect-storage-cloud into the fork?](#integrate-a-new-release-of-kafka-connect-storage-cloud-into-the-fork)
     - [Run the integration tests locally?](#run-the-integration-tests-locally)
     - [Make a private change to ni/kafka-connect-storage-cloud?](#make-a-private-change-to-nikafka-connect-storage-cloud)
-    - [Get a new build of Kafka Connect Storage Cloud for the Data Frame Service?](#get-a-new-build-of-kafka-connect-storage-cloud-for-the-data-frame-service)
+    - [Get a new build of Kafka Connect Storage Cloud in the Data Frame Service?](#get-a-new-build-of-kafka-connect-storage-cloud-in-the-data-frame-service)
     - [Make a change that could be accepted upstream?](#make-a-change-that-could-be-accepted-upstream)
+
 ## Overview
 
 The default branch of this repository is `master`, which contains both
 NI-specific changes and changes we intend to upstream. This branch is always
-based on a stable tagged commit from upstream.
+based on a stable tagged commit from upstream, which is documented at the top of
+[README.md](README.md).
 
 Changes that will be upstreamed will also live in separate topic branches
 prefixed with `ni/pub/`. These branches should be based on the same tag that
@@ -41,8 +44,8 @@ creating a VM from the
    > `sdk install java 11.0.16.1-ms`
 3. Install `gradle`:
    > `sdk install gradle 7.3.3`
-4. Install `maven`. We install an older version, as `3.8` fails builds
-   which reference `http` repos:
+4. Install `maven`. We install an older version, as `3.8` fails builds which
+   reference `http` repos:
    > `sdk install maven 3.6.3`
 
 To build this component, five other components must first be cloned and built
@@ -56,7 +59,7 @@ locally. This only needs to be repeated when we upgrade our fork
 | [rest-utils](https://github.com/confluentinc/rest-utils)                                     | `v7.2.1-30`    | `mvn install`                      |
 | [schema-registry](https://github.com/confluentinc/schema-registry)                           | `v7.2.1`       | `mvn install`                      |
 | [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common) | `v11.0.12`     | `mvn install`                      |
-| [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)             | `v10.2-ni`     | `mvn install -DskipITs`            |
+| [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)             | `v10.1.1-ni-0` | `mvn install -DskipITs`            |
 
 1. Clone and build `confluentinc/kafka`:
    > `git clone https://github.com/confluentinc/kafka/ && cd kafka && git checkout v7.2.1-6-ccs && ./gradlewAll publishToMavenLocal`
@@ -70,7 +73,7 @@ locally. This only needs to be repeated when we upgrade our fork
    > `git clone https://github.com/confluentinc/kafka-connect-storage-common && cd kafka-connect-storage-common && git checkout v11.0.12 && mvn install`
 6. Clone and build `kafka-connect-storage-cloud`:
 
-   > `git clone https://github.com/ni/kafka-connect-storage-cloud && cd kafka-connect-storage-cloud && git checkout v10.2.-ni && mvn install -DskipITs`
+   > `git clone https://github.com/ni/kafka-connect-storage-cloud && cd kafka-connect-storage-cloud && git checkout v10.1.1-ni-0 && mvn install -DskipITs`
 
    Note that the `-DskipITs` option will skip the integration tests. If you wish
    to run them, see
@@ -88,12 +91,13 @@ git fetch upstream --tags
 git push origin --tags
 ```
 
-Backup the current `master` branch, so we can revert if necessary:
+Backup the current `master` branch, so we can revert if necessary. Append the
+most recent tag to the branch name:
 
 ```
 git checkout master && git pull
-git checkout -b master-archive-10.2-ni # Version of last rebase
-git push -u origin master-archive-10.2-ni
+git checkout -b master-archive-10.1.1-ni-<latest_version> # Most recent tag for last rebase
+git push -u origin master-archive-10.1.1-ni-<latest_version>
 ```
 
 Find the latest stable release tag by referencing the changelog
@@ -103,7 +107,7 @@ Back on `master`, reset the branch to the desired upstream release tag:
 
 ```
 git checkout master
-git reset --hard v10.2-ni
+git reset --hard v10.2
 ```
 
 We now need to figure out which tags of `kafka-connect-storage-cloud`'s
@@ -160,28 +164,32 @@ but you will need to substitute these versions out based on the versions in the
    1. Check out the `v11.0.12` tag from the
       [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common)
       repo and attempt to build it with `mvn install`.
-   1. Check out the `v10.2` tag from the
-      [kafka-connect-storage-cloud]((https://github.com/ni/kafka-connect-storage-cloud)
+   1. Check out the `v10.1.1` tag from the
+      [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)
       repo and attempt to build it with `mvn install -DskipITs`.
 1. Run the integration tests for `kafka-connect-storage-cloud` locally. See
    [running the integration tests locally](#run-the-integration-tests-locally).
-1. Update the instructions in the [build section](#build-this-locally) to reflect the new tags.
-1. TODO: link to Dockerfile in AzDO and mention that it should be updated too. 
+1. Update the instructions and tags in the [table](#build-this-locally) to
+   reflect the new tags.
+1. Cherry-pick all of our NI-specific commits from the archive branch. The first
+   commit should have the message:
 
-Cherry-pick all of our NI-specific commits from the archive branch. The first
-commit should have the message:
+   _Add CONTRIBUTING_NI_.
 
-_Add "iframeNavigate" postMessage calls_.
+   ```
+   # git cherry-pick X^..Y where X is the first commit and Y is the latest on the archive branch you created above
+   git cherry-pick 095cea2^..d919979
+   ```
 
-```
-# git cherry-pick X^..Y where X is the first commit and Y is the latest on the archive branch you created above
-git cherry-pick 095cea2^..d919979
-```
+   Carefully resolve any merge conflicts. Run `git cherry-pick --skip` for any
+   changes that were accepted upstream since the last version bump. Once the
+   cherry pick is completed, force push `master` (`git push -f`). If you are not
+   an admin, ask one to do this step for you.
 
-Carefully resolve any merge conflicts. Run `git cherry-pick --skip` for any
-changes that were accepted upstream since the last version bump. Once the cherry
-pick is completed, force push `master` (`git push -f`). If you are not an admin,
-ask one to do this step for you.
+Follow the instructions in
+[Get a new build of Kafka Connect Storage Cloud in the Data Frame Service](#get-a-new-build-of-kafka-connect-storage-cloud-in-the-data-frame-service)
+to create the initial tag for the new version of the fork and uptake it in the
+Data Frame Service.
 
 ### Run the integration tests locally?
 
@@ -201,15 +209,31 @@ Amazon S3. We typically run these tests against the `stratus-dev` AWS account.
    region = us-east-1
    ```
 
-
 ### Make a private change to ni/kafka-connect-storage-cloud?
 
 To make changes to the fork that are NI-specific, simply create a topic branch
 based on `master`, make your changes, and then open a pull request merging your
 topic branch back into `master`. After the changes are reviewed and accepted,
-the branch should be **squash merged** and then deleted. See [here](#get-a-new-build-of-kafka-connect-storage-cloud-for-the-data-frame-service) for instructions on how to get a new build of this component uptaken in the Data Frame Service.
+the branch should be **squash merged** and then deleted. See
+[here](#get-a-new-build-of-kafka-connect-storage-cloud-for-the-data-frame-service)
+for instructions on how to get a new build of this component uptaken in the Data
+Frame Service.
 
-### Get a new build of Kafka Connect Storage Cloud for the Data Frame Service?
+### Get a new build of Kafka Connect Storage Cloud in the Data Frame Service?
+
+1. Create a new `ni` tag. The convention is to append `-ni-X` to the upstream
+   tag, where `X` is incremented each time you want to make a new build. For
+   example, if you just rebased `master` off of the `v10.2` tag from upstream,
+   the initial tag in our fork should be `v10.2-ni-0`.
+   > `git tag v10.2-ni-0`
+1. Push the tag:
+   > `git push --tags`
+1. Create a PR to update the
+   [Kafka Connect Dockerfile in AzDO](https://dev.azure.com/ni/DevCentral/_git/Skyline?path=/DataFrameService/kafkaConnectImage/Dockerfile)
+   with the new tags.
+1. Follow the instructions in the
+   [Kafka Connect Readme in AzDO](https://dev.azure.com/ni/DevCentral/_git/Skyline?path=/DataFrameService/kafkaConnectImage/README.md&version=GBmaster&line=64&lineEnd=65&lineStartColumn=1&lineEndColumn=1&lineStyle=plain&_a=contents)
+   to uptake the new image in the Data Frame Service.
 
 ### Make a change that could be accepted upstream?
 
@@ -224,12 +248,12 @@ Create a branch prefixed with `ni/pub` based on the same tag that
 confluentinc/kafka-connect-storage-cloud's `master` is based on. Example:
 
 ```
-# Finds the most recent tag reachable from main
+# Finds the most recent tag reachable from master
 git describe --tags --abbrev=0 master
 git checkout -b ni/pub/cool-new-feature <latest-tag>
 ```
 
-Then make your changes on this branch and open a pull request merging it into
+Then, make your changes on this branch and open a pull request merging it into
 `master`. If your changes on an `ni/pub/*` branch result in merge conflicts with
 another `ni/pub/*` branch, rebase your branch on the conflicting branch and
 force push. After the changes are reviewed and accepted, the branch should be
