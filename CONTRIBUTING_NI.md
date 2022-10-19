@@ -58,8 +58,8 @@ locally. This only needs to be repeated when we upgrade our fork
 | [common](https://github.com/confluentinc/common)                                             | `v7.2.1-22`    | `mvn install`                      |
 | [rest-utils](https://github.com/confluentinc/rest-utils)                                     | `v7.2.1-30`    | `mvn install`                      |
 | [schema-registry](https://github.com/confluentinc/schema-registry)                           | `v7.2.1`       | `mvn install`                      |
-| [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common) | `v11.0.12`     | `mvn install`                      |
-| [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)             | `v10.1.1-ni-0` | `mvn install -DskipITs`            |
+| [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common) | `v11.0.15`     | `mvn install`                      |
+| [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)             | `v10.2.2-ni-0` | `mvn install -DskipITs`            |
 
 1. Clone and build `confluentinc/kafka`:
    > `git clone https://github.com/confluentinc/kafka/ && cd kafka && git checkout v7.2.1-6-ccs && ./gradlewAll publishToMavenLocal`
@@ -70,7 +70,7 @@ locally. This only needs to be repeated when we upgrade our fork
 4. Clone and build `confluentinc/schema-registry`:
    > `git clone https://github.com/confluentinc/schema-registry && cd schema-registry && git checkout v7.2.1 && mvn install`
 5. Clone and build `kafka-connect-storage-common`:
-   > `git clone https://github.com/confluentinc/kafka-connect-storage-common && cd kafka-connect-storage-common && git checkout v11.0.12 && mvn install`
+   > `git clone https://github.com/confluentinc/kafka-connect-storage-common && cd kafka-connect-storage-common && git checkout v11.0.15 && mvn install`
 6. Clone and build `kafka-connect-storage-cloud`:
 
    > `git clone https://github.com/ni/kafka-connect-storage-cloud && cd kafka-connect-storage-cloud && git checkout v10.1.1-ni-0 && mvn install -DskipITs`
@@ -120,12 +120,12 @@ but you will need to substitute these versions out based on the versions in the
 
 1. From [pom.xml](./pom.xml), determine which version of
    `kafka-connect-storage-common` the sink depends on. At the time of writing,
-   we depend on `v11.0.12`:
+   we depend on `v11.0.15`:
    ```
        <parent>
         <groupId>io.confluent</groupId>
         <artifactId>kafka-connect-storage-common-parent</artifactId>
-        <version>11.0.12</version>
+        <version>11.0.15</version>
       </parent>
    ```
 1. Check out the tag of `kafka-connect-storage-common` that we need to build.
@@ -162,10 +162,10 @@ but you will need to substitute these versions out based on the versions in the
    1. Check out the `v7.2.1` tag from the
       [schema-registry](https://github.com/confluentinc/schema-registry) repo
       and attempt to build it with `mvn install`.
-   1. Check out the `v11.0.12` tag from the
+   1. Check out the `v11.0.15` tag from the
       [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common)
       repo and attempt to build it with `mvn install`.
-   1. Check out the `v10.1.1` tag from the
+   1. Check out the `v10.2.2` tag from the
       [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)
       repo and attempt to build it with `mvn install -DskipITs`.
 1. Run the integration tests for `kafka-connect-storage-cloud` locally. See
@@ -225,8 +225,8 @@ Frame Service.
 1. Create a new `ni` tag. The convention is to append `-ni-X` to the upstream
    tag, where `X` is incremented each time you want to make a new build. For
    example, if you just rebased `master` off of the `v10.2` tag from upstream,
-   the initial tag in our fork should be `v10.2-ni-0`.
-   > `git tag v10.2-ni-0`
+   the initial tag in our fork should be `v10.2.2-ni-0`.
+   > `git tag v10.2.2-ni-0`
 1. Push the tag:
    > `git push --tags`
 1. Create a PR to update the
