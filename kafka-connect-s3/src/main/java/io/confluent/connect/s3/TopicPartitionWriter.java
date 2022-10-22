@@ -113,9 +113,8 @@ public class TopicPartitionWriter {
                               Partitioner<?> partitioner,
                               S3SinkConnectorConfig connectorConfig,
                               SinkTaskContext context,
-                              KafkaProducer<Integer, String> producer,
                               ErrantRecordReporter reporter) {
-    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, producer, reporter);
+    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, reporter);
   }
 
   // Visible for testing
@@ -126,7 +125,6 @@ public class TopicPartitionWriter {
                        S3SinkConnectorConfig connectorConfig,
                        SinkTaskContext context,
                        Time time,
-                       KafkaProducer<Integer, String> producer,
                        ErrantRecordReporter reporter
   ) {
     this.connectorConfig = connectorConfig;
@@ -137,7 +135,6 @@ public class TopicPartitionWriter {
     this.writerProvider = writerProvider;
     this.partitioner = partitioner;
     this.reporter = reporter;
-    this.producer = producer;
     this.timestampExtractor = partitioner instanceof TimeBasedPartitioner
                                   ? ((TimeBasedPartitioner) partitioner).getTimestampExtractor()
                                   : null;
@@ -187,7 +184,7 @@ public class TopicPartitionWriter {
     setNextScheduledRotation();
   }
 
-  private final KafkaProducer<Integer, String> producer;
+//  private final KafkaProducer<Integer, String> producer;
 
   private enum State {
     WRITE_STARTED,

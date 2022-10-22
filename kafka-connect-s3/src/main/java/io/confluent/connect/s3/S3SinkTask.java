@@ -350,7 +350,6 @@ public class S3SinkTask extends SinkTask {
         connectorConfig,
         context,
         time,
-        this.producer,
         reporter
     );
   }
