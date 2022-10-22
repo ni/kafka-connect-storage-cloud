@@ -16,15 +16,23 @@
 package io.confluent.connect.s3;
 
 import com.amazonaws.SdkClientException;
+import com.eclipsesource.json.Json;
 import io.confluent.connect.s3.storage.S3Storage;
 import io.confluent.connect.s3.util.RetryUtil;
+import io.confluent.connect.storage.StorageSinkTestBase;
 import io.confluent.connect.storage.errors.PartitionException;
+import net.minidev.json.JSONObject;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.IllegalWorkerStateException;
 import org.apache.kafka.connect.errors.SchemaProjectorException;
+import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTaskContext;
@@ -54,8 +62,7 @@ import io.confluent.connect.storage.partitioner.TimestampExtractor;
 import io.confluent.connect.storage.schema.StorageSchemaCompatibility;
 import io.confluent.connect.storage.util.DateTimeUtils;
 
-import static io.confluent.connect.s3.S3SinkConnectorConfig.S3_PART_RETRIES_CONFIG;
-import static io.confluent.connect.s3.S3SinkConnectorConfig.S3_RETRY_BACKOFF_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.*;
 
 public class TopicPartitionWriter {
   private static final Logger log = LoggerFactory.getLogger(TopicPartitionWriter.class);
@@ -106,8 +113,9 @@ public class TopicPartitionWriter {
                               Partitioner<?> partitioner,
                               S3SinkConnectorConfig connectorConfig,
                               SinkTaskContext context,
+                              KafkaProducer<Integer, String> producer,
                               ErrantRecordReporter reporter) {
-    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, reporter);
+    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, producer, reporter);
   }
 
   // Visible for testing
@@ -118,6 +126,7 @@ public class TopicPartitionWriter {
                        S3SinkConnectorConfig connectorConfig,
                        SinkTaskContext context,
                        Time time,
+                       KafkaProducer<Integer, String> producer,
                        ErrantRecordReporter reporter
   ) {
     this.connectorConfig = connectorConfig;
@@ -128,6 +137,7 @@ public class TopicPartitionWriter {
     this.writerProvider = writerProvider;
     this.partitioner = partitioner;
     this.reporter = reporter;
+    this.producer = producer;
     this.timestampExtractor = partitioner instanceof TimeBasedPartitioner
                                   ? ((TimeBasedPartitioner) partitioner).getTimestampExtractor()
                                   : null;
@@ -176,6 +186,8 @@ public class TopicPartitionWriter {
     // Initialize scheduled rotation timer if applicable
     setNextScheduledRotation();
   }
+
+  private final KafkaProducer<Integer, String> producer;
 
   private enum State {
     WRITE_STARTED,
@@ -607,6 +619,7 @@ public class TopicPartitionWriter {
       String encodedPartition = entry.getKey();
       commitFile(encodedPartition);
       if (isTaggingEnabled) {
+        // entry.getValue() is the s3 object path
         RetryUtil.exponentialBackoffRetry(() -> tagFile(encodedPartition, entry.getValue()),
                 ConnectException.class,
                 connectorConfig.getInt(S3_PART_RETRIES_CONFIG),
@@ -637,6 +650,43 @@ public class TopicPartitionWriter {
       RecordWriter writer = writers.get(encodedPartition);
       // Commits the file and closes the underlying output stream.
       writer.commit();
+      String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
+      Map<String, Object> producerProps = new HashMap<>();
+      producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
+      producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+            org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
+      producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+            org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
+//      KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
+
+      Map<String, Object> jsonConverterProps = new HashMap<>();
+      JsonConverter jsonConverter;
+      jsonConverterProps.put("schemas.enable", "true");
+      jsonConverterProps.put("converter.type", "value");
+      jsonConverter = new JsonConverter();
+      jsonConverter.configure(jsonConverterProps);
+
+      byte[] keyByteArray = "foo".getBytes();
+      byte[] valueByteArray = "bar".getBytes();
+      String topic = "new-row-data";
+      SinkRecord record = new SinkRecord("new-row-data", 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, "pvvalue", 0);
+      byte[] kafkaKey = jsonConverter.fromConnectData(topic, Schema.STRING_SCHEMA, record.key());
+      byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+      ProducerRecord<byte[],byte[]> producerRecord =
+        new ProducerRecord<>(topic, 0, kafkaKey, kafkaValue);
+      Producer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
+
+//      JSONObject obj = new JSONObject();
+//      obj.put("name", "foo");
+//      obj.put("num", new Integer(100));
+//      obj.put("balance", new Double(1000.21));
+//      obj.put("is_vip", new Boolean(true));
+//      String jsonString = obj.toJSONString();
+
+      producer.send(producerRecord);
+      producer.flush();
+      // producer = null;
+//     producer.close();
       writers.remove(encodedPartition);
       log.debug("Removed writer for '{}'", encodedPartition);
     }

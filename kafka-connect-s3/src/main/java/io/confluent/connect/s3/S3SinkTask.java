@@ -18,6 +18,9 @@ package io.confluent.connect.s3;
 import com.amazonaws.AmazonClientException;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -49,6 +52,8 @@ import io.confluent.connect.storage.format.RecordWriterProvider;
 import io.confluent.connect.storage.partitioner.Partitioner;
 import io.confluent.connect.storage.partitioner.PartitionerConfig;
 
+import static io.confluent.connect.s3.S3SinkConnectorConfig.KAFKA_BOOTSTRAP_SERVERS_CONFIG;
+
 public class S3SinkTask extends SinkTask {
   private static final Logger log = LoggerFactory.getLogger(S3SinkTask.class);
 
@@ -62,6 +67,8 @@ public class S3SinkTask extends SinkTask {
   private RecordWriterProvider<S3SinkConnectorConfig> writerProvider;
   private final Time time;
   private ErrantRecordReporter reporter;
+  private KafkaProducer<Integer, String> producer;
+
 
   /**
    * No-arg constructor. Used by Connect framework.
@@ -82,6 +89,15 @@ public class S3SinkTask extends SinkTask {
     this.storage = storage;
     this.partitioner = partitioner;
     this.format = format;
+//    String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
+//    Map<String, Object> producerProps = new HashMap<>();
+//    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
+//    producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+//          org.apache.kafka.common.serialization.IntegerSerializer.class.getName());
+//    producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+//          org.apache.kafka.common.serialization.StringSerializer.class.getName());
+//    KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
+//    this.producer = producer;
     this.time = time;
 
     url = connectorConfig.getString(StorageCommonConfig.STORE_URL_CONFIG);
@@ -98,7 +114,15 @@ public class S3SinkTask extends SinkTask {
       connectorConfig = new S3SinkConnectorConfig(props);
       url = connectorConfig.getString(StorageCommonConfig.STORE_URL_CONFIG);
       timeoutMs = connectorConfig.getLong(S3SinkConnectorConfig.RETRY_BACKOFF_CONFIG);
-
+      String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
+      Map<String, Object> producerProps = new HashMap<>();
+      producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
+      producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+            org.apache.kafka.common.serialization.IntegerSerializer.class.getName());
+      producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+            org.apache.kafka.common.serialization.StringSerializer.class.getName());
+      KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
+      this.producer = producer;
       @SuppressWarnings("unchecked")
       Class<? extends S3Storage> storageClass =
           (Class<? extends S3Storage>)
@@ -213,6 +237,10 @@ public class S3SinkTask extends SinkTask {
   public void put(Collection<SinkRecord> records) throws ConnectException {
     for (SinkRecord record : records) {
       String topic = record.topic();
+      if (topic.equals("new-row-data")) {
+        continue;
+      }
+
       int partition = record.kafkaPartition();
       TopicPartition tp = new TopicPartition(topic, partition);
 
@@ -322,6 +350,7 @@ public class S3SinkTask extends SinkTask {
         connectorConfig,
         context,
         time,
+        this.producer,
         reporter
     );
   }

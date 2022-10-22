@@ -170,6 +170,9 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
   public static final boolean S3_PATH_STYLE_ACCESS_ENABLED_DEFAULT = true;
 
   public static final String STORE_KAFKA_KEYS_CONFIG = "store.kafka.keys";
+  public static final String NEW_DATA_INGESTED_TOPIC_NAME_CONFIG = "new.data.ingested.topic.name";
+  public static final String NEW_DATA_INGESTED_TOPIC_NAME_DEFAULT = "new-row-data";
+  public static final String KAFKA_BOOTSTRAP_SERVERS_CONFIG = "kafka.bootstrap.servers";
   public static final String STORE_KAFKA_HEADERS_CONFIG = "store.kafka.headers";
   public static final String KEYS_FORMAT_CLASS_CONFIG = "keys.format.class";
   public static final Class<? extends Format> KEYS_FORMAT_CLASS_DEFAULT = AvroFormat.class;
@@ -356,6 +359,22 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
           ++orderInGroup,
           Width.LONG,
           "AWS Access Key ID"
+      );
+
+      configDef.define(
+          KAFKA_BOOTSTRAP_SERVERS_CONFIG,
+          Type.STRING,
+          "foo.bar.com:9092",
+          Importance.HIGH,
+          "The AWS access key ID used to authenticate personal AWS credentials such as IAM "
+              + "credentials. Use only if you do not wish to authenticate by using a credentials "
+              + "provider class via ``"
+              + CREDENTIALS_PROVIDER_CLASS_CONFIG
+              + "``",
+          group,
+          ++orderInGroup,
+          Width.LONG,
+          "KAFKA BOOTSTRAP SERVER"
       );
 
       configDef.define(
@@ -723,6 +742,7 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
 
   protected S3SinkConnectorConfig(ConfigDef configDef, Map<String, String> props) {
     super(configDef, props);
+    // TODO: we gotta add this to a config def or some shit
     ConfigDef storageCommonConfigDef = StorageCommonConfig.newConfigDef(STORAGE_CLASS_RECOMMENDER);
     StorageCommonConfig commonConfig = new StorageCommonConfig(storageCommonConfigDef,
         originalsStrings());

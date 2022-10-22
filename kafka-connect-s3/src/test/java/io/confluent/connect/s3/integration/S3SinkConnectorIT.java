@@ -15,12 +15,7 @@
 
 package io.confluent.connect.s3.integration;
 
-import static io.confluent.connect.s3.S3SinkConnectorConfig.BEHAVIOR_ON_NULL_VALUES_CONFIG;
-import static io.confluent.connect.s3.S3SinkConnectorConfig.S3_BUCKET_CONFIG;
-import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_HEADERS_CONFIG;
-import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_KEYS_CONFIG;
-import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_ACCESS_KEY_ID_CONFIG;
-import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.*;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FLUSH_SIZE_CONFIG;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FORMAT_CLASS_CONFIG;
 import static org.apache.kafka.connect.runtime.ConnectorConfig.CONNECTOR_CLASS_CONFIG;
@@ -73,13 +68,16 @@ import org.apache.avro.io.DatumReader;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -129,7 +127,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   private static final String DLQ_TOPIC_CONFIG = "errors.deadletterqueue.topic.name";
   private static final String DLQ_TOPIC_NAME = "DLQ-topic";
 
-  private static final List<String> KAFKA_TOPICS = Collections.singletonList(DEFAULT_TEST_TOPIC_NAME);
+  private static final List<String> KAFKA_TOPICS = Arrays.asList(DEFAULT_TEST_TOPIC_NAME);
   private static final long CONSUME_MAX_DURATION_MS = TimeUnit.SECONDS.toMillis(10);
   private static final int NUM_RECORDS_INSERT = 30;
   private static final int FLUSH_SIZE_STANDARD = 3;
@@ -177,6 +175,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(S3_BUCKET_CONFIG, TEST_BUCKET_NAME);
     // create topics in Kafka
     KAFKA_TOPICS.forEach(topic -> connect.kafka().createTopic(topic, 1));
+    connect.kafka().createTopic("new-row-data", 1);
   }
 
   @After
@@ -194,6 +193,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
     testBasicRecordsWritten(AVRO_EXTENSION, false);
+//    ConsumerRecords<byte[], byte[]> dlqRecords = this.connect.kafka().consume(1, 1000, "new-row-data");
+//    System.out.println(dlqRecords.count());
   }
 
   @Test
@@ -297,6 +298,29 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // Now check that all files created by the sink have the contents that were sent
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
+
+//    Map<String, Object> producerProps = new HashMap<>();
+//    producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
+//    producerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+//        ByteArrayDeserializer.class.getName());
+//    producerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+//        ByteArrayDeserializer.class.getName());
+//
+//    KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<byte[], byte[]>(producerProps);
+//    consumer.subscribe(Arrays.asList("new-row-data"));
+//    ConsumerRecords<byte[], byte[]> records = consumer.poll(1000);
+//    assertTrue(records.count() > 0);
+    // TODO
+    ConsumerRecords<byte[], byte[]> dlqRecords = this.connect.kafka().consume(1, 1000, "new-row-data");
+    int numRecords = dlqRecords.count();
+    dlqRecords.records("new-row-data").forEach(record -> {
+      String key = new String(record.key());
+      String value = new String(record.value());
+      System.out.println("Key: " + key);
+      System.out.println("Value: " + value);
+    });
+    assertTrue(numRecords > 0);
+//    System.out.println(dlqRecords.count());
   }
 
   @Test
@@ -723,6 +747,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // converters
     props.put(KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
+    props.put(KAFKA_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
     // aws credential if exists
     props.putAll(getAWSCredentialFromPath());
   }
