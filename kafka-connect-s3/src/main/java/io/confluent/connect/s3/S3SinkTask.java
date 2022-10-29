@@ -67,7 +67,7 @@ public class S3SinkTask extends SinkTask {
   private RecordWriterProvider<S3SinkConnectorConfig> writerProvider;
   private final Time time;
   private ErrantRecordReporter reporter;
-  private KafkaProducer<Integer, String> producer;
+//  private KafkaProducer<Integer, String> producer;
 
 
   /**
@@ -121,8 +121,8 @@ public class S3SinkTask extends SinkTask {
             org.apache.kafka.common.serialization.IntegerSerializer.class.getName());
       producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
             org.apache.kafka.common.serialization.StringSerializer.class.getName());
-      KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
-      this.producer = producer;
+//      KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
+//      this.producer = producer;
       @SuppressWarnings("unchecked")
       Class<? extends S3Storage> storageClass =
           (Class<? extends S3Storage>)

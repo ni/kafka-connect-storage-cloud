@@ -663,16 +663,6 @@ public class TopicPartitionWriter {
       jsonConverter = new JsonConverter();
       jsonConverter.configure(jsonConverterProps);
 
-      byte[] keyByteArray = "foo".getBytes();
-      byte[] valueByteArray = "bar".getBytes();
-      String topic = "new-row-data";
-      SinkRecord record = new SinkRecord("new-row-data", 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, "pvvalue", 0);
-      byte[] kafkaKey = jsonConverter.fromConnectData(topic, Schema.STRING_SCHEMA, record.key());
-      byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
-      ProducerRecord<byte[],byte[]> producerRecord =
-        new ProducerRecord<>(topic, 0, kafkaKey, kafkaValue);
-      Producer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
-
 //      JSONObject obj = new JSONObject();
 //      obj.put("name", "foo");
 //      obj.put("num", new Integer(100));
@@ -680,10 +670,24 @@ public class TopicPartitionWriter {
 //      obj.put("is_vip", new Boolean(true));
 //      String jsonString = obj.toJSONString();
 
-      producer.send(producerRecord);
-      producer.flush();
-      // producer = null;
-//     producer.close();
+      if (kafkaUrl.length() > 0) {
+        try {
+          byte[] keyByteArray = "foo".getBytes();
+          byte[] valueByteArray = "bar".getBytes();
+          String topic = "new-row-data";
+          SinkRecord record = new SinkRecord("new-row-data", 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, "pvvalue", 0);
+          byte[] kafkaKey = jsonConverter.fromConnectData(topic, Schema.STRING_SCHEMA, record.key());
+          byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
+          ProducerRecord<byte[], byte[]> producerRecord =
+                  new ProducerRecord<>(topic, 0, kafkaKey, kafkaValue);
+          Producer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
+          producer.send(producerRecord);
+          producer.flush();
+//        producer.close();
+        } catch (Exception e) {
+          log.error("Error sending to kafka: {}", e.getMessage());
+        }
+      }
       writers.remove(encodedPartition);
       log.debug("Removed writer for '{}'", encodedPartition);
     }
