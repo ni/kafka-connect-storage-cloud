@@ -648,6 +648,7 @@ public class TopicPartitionWriter {
       // Commits the file and closes the underlying output stream.
       writer.commit();
       String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
+      String kafkaTopicName = this.connectorConfig.getString(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG);
       Map<String, Object> producerProps = new HashMap<>();
       producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
       producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
@@ -670,19 +671,23 @@ public class TopicPartitionWriter {
 //      obj.put("is_vip", new Boolean(true));
 //      String jsonString = obj.toJSONString();
 
-      if (kafkaUrl.length() > 0) {
+      if (connectorConfig.getBoolean(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG)) {
         try {
           byte[] keyByteArray = "foo".getBytes();
           byte[] valueByteArray = "bar".getBytes();
-          String topic = "new-row-data";
-          SinkRecord record = new SinkRecord("new-row-data", 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, "pvvalue", 0);
-          byte[] kafkaKey = jsonConverter.fromConnectData(topic, Schema.STRING_SCHEMA, record.key());
+          Long startOffset = startOffsets.get(encodedPartition);
+          Long recordCount = recordCounts.get(encodedPartition);
+          String filename = getCommitFilename(encodedPartition);
+          String value = "{\"filename\": \"" + filename + "\", \"startOffset\": " + startOffset + ", \"recordCount\": " + recordCount + "}";
+          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, value, 0);
+          byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
           byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
           ProducerRecord<byte[], byte[]> producerRecord =
-                  new ProducerRecord<>(topic, 0, kafkaKey, kafkaValue);
+                  new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, kafkaValue);
           Producer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
           producer.send(producerRecord);
           producer.flush();
+          // TODO: close
 //        producer.close();
         } catch (Exception e) {
           log.error("Error sending to kafka: {}", e.getMessage());

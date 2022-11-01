@@ -126,6 +126,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   // DLQ Tests
   private static final String DLQ_TOPIC_CONFIG = "errors.deadletterqueue.topic.name";
   private static final String DLQ_TOPIC_NAME = "DLQ-topic";
+  private static final String NEW_FILE_WRITTEN_TOPIC_NAME = "new-file-written-topic";
 
   private static final List<String> KAFKA_TOPICS = Arrays.asList(DEFAULT_TEST_TOPIC_NAME);
   private static final long CONSUME_MAX_DURATION_MS = TimeUnit.SECONDS.toMillis(10);
@@ -175,7 +176,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(S3_BUCKET_CONFIG, TEST_BUCKET_NAME);
     // create topics in Kafka
     KAFKA_TOPICS.forEach(topic -> connect.kafka().createTopic(topic, 1));
-    connect.kafka().createTopic("new-row-data", 1);
+    connect.kafka().createTopic(NEW_FILE_WRITTEN_TOPIC_NAME, 1);
   }
 
   @After
@@ -311,9 +312,9 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
 //    ConsumerRecords<byte[], byte[]> records = consumer.poll(1000);
 //    assertTrue(records.count() > 0);
     // TODO
-    ConsumerRecords<byte[], byte[]> dlqRecords = this.connect.kafka().consume(1, 1000, "new-row-data");
-    int numRecords = dlqRecords.count();
-    dlqRecords.records("new-row-data").forEach(record -> {
+    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(1, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
+    int numRecords = newFileWrittenRecords.count();
+    newFileWrittenRecords.records(NEW_FILE_WRITTEN_TOPIC_NAME).forEach(record -> {
       String key = new String(record.key());
       String value = new String(record.value());
       System.out.println("Key: " + key);
@@ -748,6 +749,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(KAFKA_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
+    props.put(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
+    props.put(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG, Boolean.toString(true));
     // aws credential if exists
     props.putAll(getAWSCredentialFromPath());
   }

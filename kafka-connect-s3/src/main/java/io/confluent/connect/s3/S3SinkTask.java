@@ -18,8 +18,6 @@ package io.confluent.connect.s3;
 import com.amazonaws.AmazonClientException;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -68,6 +66,7 @@ public class S3SinkTask extends SinkTask {
   private final Time time;
   private ErrantRecordReporter reporter;
 //  private KafkaProducer<Integer, String> producer;
+  private String newFileWrittenTopicName;
 
 
   /**
@@ -114,6 +113,7 @@ public class S3SinkTask extends SinkTask {
       connectorConfig = new S3SinkConnectorConfig(props);
       url = connectorConfig.getString(StorageCommonConfig.STORE_URL_CONFIG);
       timeoutMs = connectorConfig.getLong(S3SinkConnectorConfig.RETRY_BACKOFF_CONFIG);
+      this.newFileWrittenTopicName = this.connectorConfig.getString(S3SinkConnectorConfig.NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG);
       String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
       Map<String, Object> producerProps = new HashMap<>();
       producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
@@ -237,7 +237,10 @@ public class S3SinkTask extends SinkTask {
   public void put(Collection<SinkRecord> records) throws ConnectException {
     for (SinkRecord record : records) {
       String topic = record.topic();
-      if (topic.equals("new-row-data")) {
+      // Ignore any messages sent to the new file written topic,
+      // as they are informational and do not correspond to files that need to be written
+      // to S3.
+      if (topic.equals(this.newFileWrittenTopicName)) {
         continue;
       }
 

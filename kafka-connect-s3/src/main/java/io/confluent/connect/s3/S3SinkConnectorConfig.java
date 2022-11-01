@@ -170,8 +170,11 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
   public static final boolean S3_PATH_STYLE_ACCESS_ENABLED_DEFAULT = true;
 
   public static final String STORE_KAFKA_KEYS_CONFIG = "store.kafka.keys";
-  public static final String NEW_DATA_INGESTED_TOPIC_NAME_CONFIG = "new.data.ingested.topic.name";
-  public static final String NEW_DATA_INGESTED_TOPIC_NAME_DEFAULT = "new-row-data";
+  public static final String NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG = "publish.new.file.notifications";
+  public static final boolean NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_DEFAULT = false;
+
+  public static final String NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG = "new.file.written.topic.name";
+  public static final String NEW_FILE_WRITTEN_TOPIC_NAME_DEFAULT = "new-file-written";
   public static final String KAFKA_BOOTSTRAP_SERVERS_CONFIG = "kafka.bootstrap.servers";
   public static final String STORE_KAFKA_HEADERS_CONFIG = "store.kafka.headers";
   public static final String KEYS_FORMAT_CLASS_CONFIG = "keys.format.class";
@@ -362,19 +365,39 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
       );
 
       configDef.define(
-          KAFKA_BOOTSTRAP_SERVERS_CONFIG,
-          Type.STRING,
-          "foo.bar.com:9092",
-          Importance.HIGH,
-          "The AWS access key ID used to authenticate personal AWS credentials such as IAM "
-              + "credentials. Use only if you do not wish to authenticate by using a credentials "
-              + "provider class via ``"
-              + CREDENTIALS_PROVIDER_CLASS_CONFIG
-              + "``",
-          group,
-          ++orderInGroup,
-          Width.LONG,
-          "KAFKA BOOTSTRAP SERVER"
+              KAFKA_BOOTSTRAP_SERVERS_CONFIG,
+              Type.STRING,
+              "localhost:9092",
+              Importance.HIGH,
+              "A comma-separated list of Kafka bootstrap servers",
+              group,
+              ++orderInGroup,
+              Width.LONG,
+              "Kafka Boostrap Servers"
+      );
+
+      configDef.define(
+              NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG,
+              Type.STRING,
+              NEW_FILE_WRITTEN_TOPIC_NAME_DEFAULT,
+              Importance.HIGH,
+              "The name of the Kafka topic to which the connector will publish a message when a new file is written to S3",
+              group,
+              ++orderInGroup,
+              Width.LONG,
+              "New File Written Topic Name"
+      );
+
+      configDef.define(
+              NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG,
+              Type.BOOLEAN,
+              NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_DEFAULT,
+              Importance.HIGH,
+              "Whether to publish a message to the configured Kafka topic when a new file is written to S3",
+              group,
+              ++orderInGroup,
+              Width.LONG,
+              "New File Written Notifications Enabled"
       );
 
       configDef.define(
