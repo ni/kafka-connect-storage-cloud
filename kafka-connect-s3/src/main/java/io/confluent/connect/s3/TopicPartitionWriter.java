@@ -16,12 +16,11 @@
 package io.confluent.connect.s3;
 
 import com.amazonaws.SdkClientException;
-import com.eclipsesource.json.Json;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import io.confluent.connect.s3.storage.S3Storage;
 import io.confluent.connect.s3.util.RetryUtil;
-import io.confluent.connect.storage.StorageSinkTestBase;
 import io.confluent.connect.storage.errors.PartitionException;
-import net.minidev.json.JSONObject;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -659,7 +658,7 @@ public class TopicPartitionWriter {
 
       Map<String, Object> jsonConverterProps = new HashMap<>();
       JsonConverter jsonConverter;
-      jsonConverterProps.put("schemas.enable", "true");
+      jsonConverterProps.put("schemas.enable", "false");
       jsonConverterProps.put("converter.type", "value");
       jsonConverter = new JsonConverter();
       jsonConverter.configure(jsonConverterProps);
@@ -679,7 +678,13 @@ public class TopicPartitionWriter {
           Long recordCount = recordCounts.get(encodedPartition);
           String filename = getCommitFilename(encodedPartition);
           String value = "{\"filename\": \"" + filename + "\", \"startOffset\": " + startOffset + ", \"recordCount\": " + recordCount + "}";
-          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, value, 0);
+          NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
+          body.filename = filename;
+          body.offset = startOffset;
+          body.recordCount = recordCount;
+          ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+          String json = ow.writeValueAsString(body);
+          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, json, 0);
           byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
           byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
           ProducerRecord<byte[], byte[]> producerRecord =

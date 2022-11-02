@@ -32,10 +32,13 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 
+import io.confluent.connect.s3.NewFileWrittenMessageBody;
 import io.confluent.connect.s3.S3SinkConnector;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
 import io.confluent.connect.s3.format.avro.AvroFormat;
@@ -66,6 +69,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -319,6 +323,31 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
       String value = new String(record.value());
       System.out.println("Key: " + key);
       System.out.println("Value: " + value);
+      value = StringEscapeUtils.unescapeJava(value);
+      value = value.substring(1, value.length() - 1); // remove leading and trailing quotes
+//      value = value.substring(1);
+//      value = value.substring(0, value.length() - 1);
+//      value = value.replace("\\n", "");
+//      value = value.substring(value.length() - 1);
+            System.out.println("Value: " + value);
+//      value = value.substring(1);
+//      value = value.substring(value.indexOf("payload\":\""));
+//      value = value.substring(10);
+//      value = value.substring(0, value.length() - 2); // pull out the trailing "}
+      ObjectMapper mapper = new ObjectMapper();
+      final String json = "{\"contentType\": \"foo\"}";
+      final String modelJson = "{\"filename\": \"foo\", \"offset\": 0, \"recordCount\": 3}";
+      final String ourJson = "{  \"filename\" : \"topics/TestTopic/partition=0/TestTopic+0+0000000000.avro\",  \"offset\" : 0,  \"recordCount\" : 3}";
+      try {
+//        final String finalValue = StringEscapeUtils.unescapeJava(value);
+        ObjectNode node = new ObjectMapper().readValue(value, ObjectNode.class);
+        String recordCount = node.get("recordCount").asText();
+        System.out.println("Start Offset: " + recordCount);
+        NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
+        System.out.println(message.filename);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
     });
     assertTrue(numRecords > 0);
 //    System.out.println(dlqRecords.count());
