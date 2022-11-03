@@ -12,7 +12,7 @@ public class NewFileWrittenMessageBody {
     @JsonProperty("recordCount")
     public Long recordCount;
 
-    public NewFileWrittenMessageBody(){
+    public NewFileWrittenMessageBody() {
 
     }
 }

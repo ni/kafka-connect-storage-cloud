@@ -304,45 +304,18 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
-//    Map<String, Object> producerProps = new HashMap<>();
-//    producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
-//    producerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-//        ByteArrayDeserializer.class.getName());
-//    producerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-//        ByteArrayDeserializer.class.getName());
-//
-//    KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<byte[], byte[]>(producerProps);
-//    consumer.subscribe(Arrays.asList("new-row-data"));
-//    ConsumerRecords<byte[], byte[]> records = consumer.poll(1000);
-//    assertTrue(records.count() > 0);
     // TODO
     ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(1, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
     int numRecords = newFileWrittenRecords.count();
     newFileWrittenRecords.records(NEW_FILE_WRITTEN_TOPIC_NAME).forEach(record -> {
-      String key = new String(record.key());
       String value = new String(record.value());
-      System.out.println("Key: " + key);
+      System.out.println("Key: " + record.key());
       System.out.println("Value: " + value);
       value = StringEscapeUtils.unescapeJava(value);
       value = value.substring(1, value.length() - 1); // remove leading and trailing quotes
-//      value = value.substring(1);
-//      value = value.substring(0, value.length() - 1);
-//      value = value.replace("\\n", "");
-//      value = value.substring(value.length() - 1);
-            System.out.println("Value: " + value);
-//      value = value.substring(1);
-//      value = value.substring(value.indexOf("payload\":\""));
-//      value = value.substring(10);
-//      value = value.substring(0, value.length() - 2); // pull out the trailing "}
+      System.out.println("Normalized value: " + value);
       ObjectMapper mapper = new ObjectMapper();
-      final String json = "{\"contentType\": \"foo\"}";
-      final String modelJson = "{\"filename\": \"foo\", \"offset\": 0, \"recordCount\": 3}";
-      final String ourJson = "{  \"filename\" : \"topics/TestTopic/partition=0/TestTopic+0+0000000000.avro\",  \"offset\" : 0,  \"recordCount\" : 3}";
       try {
-//        final String finalValue = StringEscapeUtils.unescapeJava(value);
-        ObjectNode node = new ObjectMapper().readValue(value, ObjectNode.class);
-        String recordCount = node.get("recordCount").asText();
-        System.out.println("Start Offset: " + recordCount);
         NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
         System.out.println(message.filename);
       } catch (JsonProcessingException e) {
@@ -350,7 +323,6 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
       }
     });
     assertTrue(numRecords > 0);
-//    System.out.println(dlqRecords.count());
   }
 
   @Test

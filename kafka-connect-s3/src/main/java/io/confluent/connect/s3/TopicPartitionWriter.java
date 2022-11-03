@@ -654,7 +654,6 @@ public class TopicPartitionWriter {
             org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
       producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
             org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
-//      KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
 
       Map<String, Object> jsonConverterProps = new HashMap<>();
       JsonConverter jsonConverter;
@@ -663,32 +662,26 @@ public class TopicPartitionWriter {
       jsonConverter = new JsonConverter();
       jsonConverter.configure(jsonConverterProps);
 
-//      JSONObject obj = new JSONObject();
-//      obj.put("name", "foo");
-//      obj.put("num", new Integer(100));
-//      obj.put("balance", new Double(1000.21));
-//      obj.put("is_vip", new Boolean(true));
-//      String jsonString = obj.toJSONString();
-
       if (connectorConfig.getBoolean(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG)) {
         try {
-          byte[] keyByteArray = "foo".getBytes();
-          byte[] valueByteArray = "bar".getBytes();
           Long startOffset = startOffsets.get(encodedPartition);
           Long recordCount = recordCounts.get(encodedPartition);
           String filename = getCommitFilename(encodedPartition);
-          String value = "{\"filename\": \"" + filename + "\", \"startOffset\": " + startOffset + ", \"recordCount\": " + recordCount + "}";
+
           NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
           body.filename = filename;
           body.offset = startOffset;
           body.recordCount = recordCount;
+
           ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
           String json = ow.writeValueAsString(body);
+          // TODO: think about the key
           SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, json, 0);
           byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
           byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
           ProducerRecord<byte[], byte[]> producerRecord =
                   new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, kafkaValue);
+
           Producer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
           producer.send(producerRecord);
           producer.flush();
