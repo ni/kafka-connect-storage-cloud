@@ -646,6 +646,7 @@ public class TopicPartitionWriter {
       RecordWriter writer = writers.get(encodedPartition);
       // Commits the file and closes the underlying output stream.
       writer.commit();
+
       String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
       String kafkaTopicName = this.connectorConfig.getString(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG);
       Map<String, Object> producerProps = new HashMap<>();
@@ -654,6 +655,9 @@ public class TopicPartitionWriter {
             org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
       producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
             org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
+
+      // TODO: hook up a JSON serializer here instead
+      // maybe: org.apache.kafka.connect.json.JsonSerializer.class.getName()
 
       Map<String, Object> jsonConverterProps = new HashMap<>();
       JsonConverter jsonConverter;
@@ -675,7 +679,7 @@ public class TopicPartitionWriter {
 
           ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
           String json = ow.writeValueAsString(body);
-          // TODO: think about the key
+          // TODO: think about the key. filename might be reasonable. null might be too.
           SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, json, 0);
           byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
           byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());

@@ -320,11 +320,12 @@ public class S3SinkTask extends SinkTask {
   public void close(Collection<TopicPartition> partitions) {
     for (TopicPartition tp : topicPartitionWriters.keySet()) {
       try {
-        topicPartitionWriters.get(tp).close();
+        topicPartitionWriters.get(tp).close(); // todo: close our producer here
       } catch (ConnectException e) {
         log.error("Error closing writer for {}. Error: {}", tp, e.getMessage());
       }
     }
+    // todo:
     topicPartitionWriters.clear();
   }
 
