@@ -16,6 +16,7 @@
 package io.confluent.connect.s3;
 
 import com.amazonaws.SdkClientException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import io.confluent.connect.s3.storage.S3Storage;
@@ -26,12 +27,14 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.IllegalWorkerStateException;
 import org.apache.kafka.connect.errors.SchemaProjectorException;
 import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.json.JsonSerializer;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTaskContext;
@@ -646,6 +649,7 @@ public class TopicPartitionWriter {
       RecordWriter writer = writers.get(encodedPartition);
       // Commits the file and closes the underlying output stream.
       writer.commit();
+      final Serializer<JsonNode> jsonSerializer = new JsonSerializer();
 
       String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
       String kafkaTopicName = this.connectorConfig.getString(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG);
@@ -654,7 +658,7 @@ public class TopicPartitionWriter {
       producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
             org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
       producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-            org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
+            org.apache.kafka.connect.json.JsonSerializer.class.getName());
 
       // TODO: hook up a JSON serializer here instead
       // maybe: org.apache.kafka.connect.json.JsonSerializer.class.getName()
@@ -665,6 +669,7 @@ public class TopicPartitionWriter {
       jsonConverterProps.put("converter.type", "value");
       jsonConverter = new JsonConverter();
       jsonConverter.configure(jsonConverterProps);
+      ObjectMapper mapper = new ObjectMapper();
 
       if (connectorConfig.getBoolean(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG)) {
         try {
@@ -678,15 +683,15 @@ public class TopicPartitionWriter {
           body.recordCount = recordCount;
 
           ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-          String json = ow.writeValueAsString(body);
-          // TODO: think about the key. filename might be reasonable. null might be too.
-          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, json, 0);
-          byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
-          byte[] kafkaValue = jsonConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
-          ProducerRecord<byte[], byte[]> producerRecord =
-                  new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, kafkaValue);
+          JsonNode node = mapper.valueToTree(body);
 
-          Producer<byte[], byte[]> producer = new KafkaProducer<>(producerProps);
+          // TODO: think about the key. filename might be reasonable. null might be too.
+          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, body, 0);
+          byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
+          ProducerRecord<byte[], JsonNode> producerRecord =
+                  new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, node);
+
+          Producer<byte[], JsonNode> producer = new KafkaProducer<>(producerProps);
           producer.send(producerRecord);
           producer.flush();
           // TODO: close

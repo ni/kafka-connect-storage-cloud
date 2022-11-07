@@ -311,8 +311,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
       String value = new String(record.value());
       System.out.println("Key: " + record.key());
       System.out.println("Value: " + value);
-      value = StringEscapeUtils.unescapeJava(value);
-      value = value.substring(1, value.length() - 1); // remove leading and trailing quotes
+//      value = StringEscapeUtils.unescapeJava(value);
+//      value = value.substring(1, value.length() - 1); // remove leading and trailing quotes
       System.out.println("Normalized value: " + value);
       ObjectMapper mapper = new ObjectMapper();
       try {
