@@ -298,7 +298,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // There should be one message per file
     ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
     assertEquals(expectedTotalFileCount, newFileWrittenRecords.count());
-    assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD);
+    assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD, TOPIC_PARTITION);
 //    int numRecords = newFileWrittenRecords.count();
 //    newFileWrittenRecords.records(NEW_FILE_WRITTEN_TOPIC_NAME).forEach(record -> {
 //      String value = new String(record.value());
@@ -316,24 +316,33 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
 //    assertTrue(numRecords > 0);
   }
 
-  private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages, int expectedMessageCount, Set<String> expectedFileNames, long expectedRecordsPerFile) {
+  private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages, int expectedMessageCount, Set<String> expectedFileNames, long expectedRecordsPerFile, int expectedPartition) {
     HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
     assertEquals(expectedMessageCount, continuumMessages.count());
-    continuumMessages.forEach(record -> {
+    long offset = 0;
+    for (ConsumerRecord<byte[], byte[]> record : continuumMessages) {
       String value = new String(record.value());
-      System.out.println("Key: " + record.key());
-      System.out.println("Value: " + value);
       ObjectMapper mapper = new ObjectMapper();
       try {
         NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
         System.out.println(message.filename);
+
         assertTrue(expectedFileNamesCopy.contains(message.filename));
-        expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct, as expected
+        expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
+        if (offset == 30L) {
+            System.out.println("Offset 30: " + message.filename);
+        }
+
         assertEquals(expectedRecordsPerFile, message.recordCount);
+
+//        assertEquals(offset, message.offset); // TODO
+//        offset += expectedRecordsPerFile;
+
+        assertEquals(record.partition(), expectedPartition);
       } catch (JsonProcessingException e) {
         throw new RuntimeException(e);
       }
-    });
+    }
   }
 
   @Test
@@ -765,7 +774,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG, Boolean.toString(true));
     props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
     props.put(CONTINUUM_TOPIC_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
-    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(0));
+    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(TOPIC_PARTITION));
     // we use JSON for the integration tests so that we don't have to spin up schema registry
     props.put(CONTINUUM_VALUE_CONVERTER_CONFIG, org.apache.kafka.connect.json.JsonSerializer.class.getName());
     // aws credential if exists
