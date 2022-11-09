@@ -52,7 +52,7 @@ public class S3Continuum {
                                 + "\"fields\":["
                                 + "{\"name\":\"filename\",\"type\":\"string\"},"
                                 + "{\"name\":\"offset\",\"type\":\"long\"},"
-                                + "{\"name\":\"recordCount\",\"type\":\"long\"},"
+                                + "{\"name\":\"recordCount\",\"type\":\"long\"}"
                                 + "]}";
                 Schema.Parser parser = new Schema.Parser();
                 valueSchema = parser.parse(s3NotificationSchema);
