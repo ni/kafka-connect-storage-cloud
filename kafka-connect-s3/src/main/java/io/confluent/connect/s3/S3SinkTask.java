@@ -360,7 +360,8 @@ public class S3SinkTask extends SinkTask {
         connectorConfig,
         context,
         time,
-        reporter
+        reporter,
+            continuumProducer
     );
   }
 }

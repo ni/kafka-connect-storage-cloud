@@ -19,6 +19,7 @@ import com.amazonaws.SdkClientException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import io.confluent.connect.s3.continuum.S3ContinuumSink;
 import io.confluent.connect.s3.storage.S3Storage;
 import io.confluent.connect.s3.util.RetryUtil;
 import io.confluent.connect.storage.errors.PartitionException;
@@ -108,6 +109,7 @@ public class TopicPartitionWriter {
   private final S3SinkConnectorConfig connectorConfig;
   private static final Time SYSTEM_TIME = new SystemTime();
   private ErrantRecordReporter reporter;
+  private S3ContinuumSink continuumProducer;
 
   public TopicPartitionWriter(TopicPartition tp,
                               S3Storage storage,
@@ -116,7 +118,7 @@ public class TopicPartitionWriter {
                               S3SinkConnectorConfig connectorConfig,
                               SinkTaskContext context,
                               ErrantRecordReporter reporter) {
-    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, reporter);
+    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, reporter, null);
   }
 
   // Visible for testing
@@ -127,8 +129,8 @@ public class TopicPartitionWriter {
                        S3SinkConnectorConfig connectorConfig,
                        SinkTaskContext context,
                        Time time,
-                       ErrantRecordReporter reporter
-  ) {
+                       ErrantRecordReporter reporter,
+                       S3ContinuumSink continuumProducer) {
     this.connectorConfig = connectorConfig;
     this.time = time;
     this.tp = tp;
@@ -137,6 +139,7 @@ public class TopicPartitionWriter {
     this.writerProvider = writerProvider;
     this.partitioner = partitioner;
     this.reporter = reporter;
+    this.continuumProducer = continuumProducer;
     this.timestampExtractor = partitioner instanceof TimeBasedPartitioner
                                   ? ((TimeBasedPartitioner) partitioner).getTimestampExtractor()
                                   : null;
@@ -671,7 +674,7 @@ public class TopicPartitionWriter {
       jsonConverter.configure(jsonConverterProps);
       ObjectMapper mapper = new ObjectMapper();
 
-      if (connectorConfig.getBoolean(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG)) {
+      if (connectorConfig.getBoolean(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG)) { // todo
         try {
           Long startOffset = startOffsets.get(encodedPartition);
           Long recordCount = recordCounts.get(encodedPartition);
@@ -681,20 +684,21 @@ public class TopicPartitionWriter {
           body.filename = filename;
           body.offset = startOffset;
           body.recordCount = recordCount;
-                    JsonNode node = mapper.valueToTree(body);
+//                    JsonNode node = mapper.valueToTree(body);
 
 
-          ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+//          ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
 
           // TODO: think about the key. filename might be reasonable. null might be too.
-          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, body, 0);
-          byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
-          ProducerRecord<byte[], JsonNode> producerRecord =
-                  new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, node);
-
-          Producer<byte[], JsonNode> producer = new KafkaProducer<>(producerProps);
-          producer.send(producerRecord);
-          producer.flush();
+//          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, body, 0);
+//          byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
+//          ProducerRecord<byte[], JsonNode> producerRecord =
+//                  new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, node);
+//
+//          Producer<byte[], JsonNode> producer = new KafkaProducer<>(producerProps);
+//          producer.send(producerRecord);
+//          producer.flush();
+          continuumProducer.produce("foo", filename, startOffset, recordCount);
           // TODO: close
 //        producer.close();
         } catch (Exception e) {
