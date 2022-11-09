@@ -50,15 +50,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -199,8 +191,6 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
     testBasicRecordsWritten(AVRO_EXTENSION, false);
-//    ConsumerRecords<byte[], byte[]> dlqRecords = this.connect.kafka().consume(1, 1000, "new-row-data");
-//    System.out.println(dlqRecords.count());
   }
 
   @Test
@@ -305,25 +295,45 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
-    // TODO
-    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(1, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
-    int numRecords = newFileWrittenRecords.count();
-    newFileWrittenRecords.records(NEW_FILE_WRITTEN_TOPIC_NAME).forEach(record -> {
+    // There should be one message per file
+    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
+    assertEquals(expectedTotalFileCount, newFileWrittenRecords.count());
+    assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD);
+//    int numRecords = newFileWrittenRecords.count();
+//    newFileWrittenRecords.records(NEW_FILE_WRITTEN_TOPIC_NAME).forEach(record -> {
+//      String value = new String(record.value());
+//      System.out.println("Key: " + record.key());
+//      System.out.println("Value: " + value);
+//      System.out.println("Normalized value: " + value);
+//      ObjectMapper mapper = new ObjectMapper();
+//      try {
+//        NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
+//        System.out.println(message.filename);
+//      } catch (JsonProcessingException e) {
+//        throw new RuntimeException(e);
+//      }
+//    });
+//    assertTrue(numRecords > 0);
+  }
+
+  private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages, int expectedMessageCount, Set<String> expectedFileNames, long expectedRecordsPerFile) {
+    HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
+    assertEquals(expectedMessageCount, continuumMessages.count());
+    continuumMessages.forEach(record -> {
       String value = new String(record.value());
       System.out.println("Key: " + record.key());
       System.out.println("Value: " + value);
-//      value = StringEscapeUtils.unescapeJava(value);
-//      value = value.substring(1, value.length() - 1); // remove leading and trailing quotes
-      System.out.println("Normalized value: " + value);
       ObjectMapper mapper = new ObjectMapper();
       try {
         NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
         System.out.println(message.filename);
+        assertTrue(expectedFileNamesCopy.contains(message.filename));
+        expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct, as expected
+        assertEquals(expectedRecordsPerFile, message.recordCount);
       } catch (JsonProcessingException e) {
         throw new RuntimeException(e);
       }
     });
-    assertTrue(numRecords > 0);
   }
 
   @Test
@@ -755,7 +765,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG, Boolean.toString(true));
     props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
     props.put(CONTINUUM_TOPIC_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
-    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(0)); // todo: should probably be int
+    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(0));
     // we use JSON for the integration tests so that we don't have to spin up schema registry
     props.put(CONTINUUM_VALUE_CONVERTER_CONFIG, org.apache.kafka.connect.json.JsonSerializer.class.getName());
     // aws credential if exists

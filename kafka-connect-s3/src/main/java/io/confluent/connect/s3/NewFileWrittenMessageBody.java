@@ -7,10 +7,10 @@ public class NewFileWrittenMessageBody {
     public String filename;
 
     @JsonProperty("offset")
-    public Long offset;
+    public long offset;
 
     @JsonProperty("recordCount")
-    public Long recordCount;
+    public long recordCount;
 
     public NewFileWrittenMessageBody() {
 
