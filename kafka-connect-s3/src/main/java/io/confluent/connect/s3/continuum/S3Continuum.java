@@ -13,6 +13,7 @@ import org.apache.kafka.common.config.AbstractConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Properties;
 
 import static io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG;
@@ -49,7 +50,6 @@ public class S3Continuum {
                                 + "\"name\":\"" + continuumConfig.topic + "_continuum\","
                                 + "\"namespace\":\"io.confluent.connect.s3.continuum\","
                                 + "\"fields\":["
-                                + "{\"name\":\"label\",\"type\":\"string\"},"
                                 + "{\"name\":\"filename\",\"type\":\"string\"},"
                                 + "{\"name\":\"offset\",\"type\":\"long\"},"
                                 + "{\"name\":\"recordCount\",\"type\":\"long\"},"
@@ -101,7 +101,7 @@ public class S3Continuum {
         if (producer != null) {
             log.debug("Stopping S3Continuum... Continuum producer detected, closing producer.");
             try {
-                producer.close();
+                producer.close(Duration.ofSeconds(10));
             } catch (Throwable t) {
                 log.warn("Error while closing the continuum producer: ", t);
             } finally {
