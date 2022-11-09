@@ -32,7 +32,9 @@ public class S3ContinuumConfig {
     public static final String CONTINUUM_VALUE_CONVERTER_CONFIG =
             "continuum.value.converter";
     private static final String CONTINUUM_VALUE_CONVERTER_DOC =
-            "The class to use to serialize the values written to the Kafka notification topic. Supported values include TODO avro and TODO json";
+            "The class to use to serialize the values written to the Kafka notification topic. " +
+                    "Supported values include io.confluent.kafka.serializers.KafkaAvroSerializer.class for AVRO," +
+                    " and org.apache.kafka.connect.json.JsonSerializer for JSON";
     private static final String CONTINUUM_VALUE_CONVERTER_DISPLAY =
             "Continuum Value Serializer";
 
@@ -129,5 +131,4 @@ public class S3ContinuumConfig {
                         ConfigDef.Width.MEDIUM,
                         CONTINUUM_VALUE_CONVERTER_DISPLAY);
     }
-
 }

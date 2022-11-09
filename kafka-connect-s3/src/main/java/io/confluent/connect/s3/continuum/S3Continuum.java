@@ -41,7 +41,7 @@ public class S3Continuum {
                     org.apache.kafka.common.serialization.StringSerializer.class);
             // TODO: use value converter from config
             props.put(VALUE_SERIALIZER_CLASS_CONFIG,
-                    org.apache.kafka.connect.json.JsonSerializer.class.getName());
+                    continuumConfig.valueConverter);
             producer = new KafkaProducer<>(props);
 
             if (continuumConfig.schemaRegistryURL != "") {
@@ -53,9 +53,6 @@ public class S3Continuum {
                                 + "{\"name\":\"filename\",\"type\":\"string\"},"
                                 + "{\"name\":\"offset\",\"type\":\"long\"},"
                                 + "{\"name\":\"recordCount\",\"type\":\"long\"},"
-                                + "{\"name\":\"version\",\"type\":[\"null\",\"string\"],\"default\":null},"
-                                + "{\"name\":\"updatedOn\",\"type\":[\"null\",{\"type\":\"long\","
-                                + "\"logicalType\":\"timestamp-millis\"}],\"default\":null}"
                                 + "]}";
                 Schema.Parser parser = new Schema.Parser();
                 valueSchema = parser.parse(s3NotificationSchema);

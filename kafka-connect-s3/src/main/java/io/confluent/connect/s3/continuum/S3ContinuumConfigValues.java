@@ -9,9 +9,9 @@ public class S3ContinuumConfigValues {
     private static final Logger log = LoggerFactory.getLogger(S3ContinuumConfigValues.class);
 
     public String topic;
+    public int partition;
     public String bootstrapServers;
     public String schemaRegistryURL;
-    public int partition;
     public String valueConverter;
 
     public boolean isConfigured() {
@@ -24,7 +24,10 @@ public class S3ContinuumConfigValues {
             if (bootstrapServers == "") {
                 missingValues.add(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
             }
-            if (schemaRegistryURL == "" && valueConverter != null && valueConverter.contains("avro")) {
+            if (valueConverter == "") {
+                missingValues.add(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
+            }
+            if (schemaRegistryURL == "" && valueConverter != null && valueConverter.toLowerCase().contains("avro")) {
                 missingValues.add(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
             }
 
