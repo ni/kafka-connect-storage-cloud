@@ -81,7 +81,6 @@ public class S3Continuum {
                 value.put("filename", filename);
                 value.put("offset", offset);
                 value.put("recordCount", recordCount);
-                value.put("version", null); // todo
                 producer.send(new ProducerRecord<>(topic, key, value));
             } else {
                 NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
