@@ -16,6 +16,7 @@
 package io.confluent.connect.s3.integration;
 
 import static io.confluent.connect.s3.S3SinkConnectorConfig.*;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.*;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FLUSH_SIZE_CONFIG;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FORMAT_CLASS_CONFIG;
 import static org.apache.kafka.connect.runtime.ConnectorConfig.CONNECTOR_CLASS_CONFIG;
@@ -752,6 +753,9 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(KAFKA_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
     props.put(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
     props.put(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG, Boolean.toString(true));
+    props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
+    props.put(CONTINUUM_TOPIC_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
+    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(0)); // todo: should probably be int
     // aws credential if exists
     props.putAll(getAWSCredentialFromPath());
   }
