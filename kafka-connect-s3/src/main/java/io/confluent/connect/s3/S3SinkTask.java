@@ -17,6 +17,7 @@ package io.confluent.connect.s3;
 
 import com.amazonaws.AmazonClientException;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
+import io.confluent.connect.s3.continuum.S3Continuum;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -49,7 +50,6 @@ import io.confluent.connect.storage.format.Format;
 import io.confluent.connect.storage.format.RecordWriterProvider;
 import io.confluent.connect.storage.partitioner.Partitioner;
 import io.confluent.connect.storage.partitioner.PartitionerConfig;
-import io.confluent.connect.s3.continuum.S3ContinuumSink;
 
 import static io.confluent.connect.s3.S3SinkConnectorConfig.KAFKA_BOOTSTRAP_SERVERS_CONFIG;
 
@@ -66,9 +66,8 @@ public class S3SinkTask extends SinkTask {
   private RecordWriterProvider<S3SinkConnectorConfig> writerProvider;
   private final Time time;
   private ErrantRecordReporter reporter;
-//  private KafkaProducer<Integer, String> producer;
   private String newFileWrittenTopicName;
-  public S3ContinuumSink continuumProducer;
+  public S3Continuum continuumProducer;
 
 
   /**
@@ -125,7 +124,7 @@ public class S3SinkTask extends SinkTask {
             org.apache.kafka.common.serialization.StringSerializer.class.getName());
       if (continuumProducer == null) {
         // TODO
-        continuumProducer = new S3ContinuumSink(connectorConfig);
+        continuumProducer = new S3Continuum(connectorConfig);
       }
 //      KafkaProducer<Integer, String> producer = new KafkaProducer<Integer, String>(producerProps);
 //      this.producer = producer;

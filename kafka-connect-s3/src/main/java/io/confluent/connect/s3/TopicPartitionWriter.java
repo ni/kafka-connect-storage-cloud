@@ -18,15 +18,11 @@ package io.confluent.connect.s3;
 import com.amazonaws.SdkClientException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import io.confluent.connect.s3.continuum.S3ContinuumSink;
+import io.confluent.connect.s3.continuum.S3Continuum;
 import io.confluent.connect.s3.storage.S3Storage;
 import io.confluent.connect.s3.util.RetryUtil;
 import io.confluent.connect.storage.errors.PartitionException;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.connect.data.Schema;
@@ -109,7 +105,7 @@ public class TopicPartitionWriter {
   private final S3SinkConnectorConfig connectorConfig;
   private static final Time SYSTEM_TIME = new SystemTime();
   private ErrantRecordReporter reporter;
-  private S3ContinuumSink continuumProducer;
+  private S3Continuum continuumProducer;
 
   public TopicPartitionWriter(TopicPartition tp,
                               S3Storage storage,
@@ -130,7 +126,7 @@ public class TopicPartitionWriter {
                        SinkTaskContext context,
                        Time time,
                        ErrantRecordReporter reporter,
-                       S3ContinuumSink continuumProducer) {
+                       S3Continuum continuumProducer) {
     this.connectorConfig = connectorConfig;
     this.time = time;
     this.tp = tp;

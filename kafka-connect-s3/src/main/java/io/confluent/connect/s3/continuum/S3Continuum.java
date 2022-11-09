@@ -25,10 +25,10 @@ public class S3Continuum {
     private static final Logger log = LoggerFactory.getLogger(S3Continuum.class);
 
     private Producer<Object, Object> producer;
-    private ObjectMapper mapper;
     private String topic;
-    private Schema valueSchema;
     private int partition;
+    private ObjectMapper mapper;
+    private Schema valueSchema;
 
     public S3Continuum(AbstractConfig config) {
         final S3ContinuumConfigValues continuumConfig = S3ContinuumConfig.parseConfigValues(config);
@@ -77,24 +77,25 @@ public class S3Continuum {
     }
 
     public void produce(String key, String filename, long offset, long recordCount) {
-        boolean usingAvro = valueSchema != null;
-        if (usingAvro) {
-            GenericRecord value = new GenericData.Record(valueSchema);
-            value.put("filename", filename);
-            value.put("offset", offset);
-            value.put("recordCount", recordCount);
-            value.put("version", null);
-            producer.send(new ProducerRecord<Object, Object>(topic, key, value));
-        } else {
-            NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
-            body.filename = filename;
-            body.offset = offset;
-            body.recordCount = recordCount;
-            JsonNode node = mapper.valueToTree(body);
+        if (isActive()) {
+            boolean usingAvro = valueSchema != null;
+            if (usingAvro) {
+                GenericRecord value = new GenericData.Record(valueSchema);
+                value.put("filename", filename);
+                value.put("offset", offset);
+                value.put("recordCount", recordCount);
+                value.put("version", null); // todo
+                producer.send(new ProducerRecord<>(topic, key, value));
+            } else {
+                NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
+                body.filename = filename;
+                body.offset = offset;
+                body.recordCount = recordCount;
+                JsonNode node = mapper.valueToTree(body);
 
-            producer.send(new ProducerRecord<Object, Object>(topic, partition, key, node));
+                producer.send(new ProducerRecord<>(topic, partition, key, node));
+            }
         }
-
     }
 
     public void stop() {
