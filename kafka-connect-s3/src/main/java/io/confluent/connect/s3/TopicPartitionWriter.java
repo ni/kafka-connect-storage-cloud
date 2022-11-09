@@ -681,9 +681,10 @@ public class TopicPartitionWriter {
           body.filename = filename;
           body.offset = startOffset;
           body.recordCount = recordCount;
+                    JsonNode node = mapper.valueToTree(body);
+
 
           ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-          JsonNode node = mapper.valueToTree(body);
 
           // TODO: think about the key. filename might be reasonable. null might be too.
           SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, body, 0);
