@@ -63,8 +63,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -236,7 +235,18 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
           boolean addExtensionInTopic
   ) throws Throwable {
     final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
+    Properties consumerProps = new Properties();
 
+    consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
+    consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "group1");
+
+
+    consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+    consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, io.confluent.connect.s3.continuum.CustomKafkaAvroDeserializer.class.getName());
+    consumerProps.put("schema.registry.url", "http://localhost:8081"); // dummy URL
+    // There should be one message per file
+    final Consumer<String, GenericRecord> consumer = new KafkaConsumer<>(consumerProps);
+    consumer.subscribe(Arrays.asList(CONTINUUM_TOPIC_NAME));
     // Add an extra topic with this extension inside of the name
     // Use a TreeSet for test determinism
     Set<String> topicNames = new TreeSet<>(KAFKA_TOPICS);
@@ -290,9 +300,14 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
-    // There should be one message per file
-    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, CONTINUUM_TOPIC_NAME);
-    assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD, TOPIC_PARTITION);
+    while(true) {
+      ConsumerRecords<String, GenericRecord> records = consumer.poll(100);
+      for (ConsumerRecord<String, GenericRecord> record : records) {
+        System.out.println(record.value());
+      }
+    }
+//    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, CONTINUUM_TOPIC_NAME);
+//    assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD, TOPIC_PARTITION);
   }
 
   // todo: move me
@@ -749,7 +764,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(CONTINUUM_TOPIC_CONFIG, CONTINUUM_TOPIC_NAME);
     props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(TOPIC_PARTITION));
     // we use JSON for the integration tests so that we don't have to spin up schema registry
-    props.put(CONTINUUM_VALUE_CONVERTER_CONFIG, org.apache.kafka.connect.json.JsonSerializer.class.getName());
+    props.put(CONTINUUM_VALUE_CONVERTER_CONFIG, io.confluent.connect.s3.continuum.CustomKafkaAvroSerializer.class.getName());
+    props.put(CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081"); // todo
     // aws credential if exists
     props.putAll(getAWSCredentialFromPath());
   }
