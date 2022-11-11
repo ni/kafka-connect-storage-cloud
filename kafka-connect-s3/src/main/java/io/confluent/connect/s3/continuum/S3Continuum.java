@@ -24,10 +24,10 @@ public class S3Continuum {
     private static final Logger log = LoggerFactory.getLogger(S3Continuum.class);
 
     private Producer<Object, Object> producer;
-    public static String topic; // todo public
+    private String topic;
     private int partition;
     private ObjectMapper mapper;
-    public static Schema valueSchema; // todo public
+    private Schema valueSchema;
 
     public S3Continuum(AbstractConfig config) {
         final S3ContinuumConfigValues continuumConfig = S3ContinuumConfig.parseConfigValues(config);
@@ -45,7 +45,7 @@ public class S3Continuum {
             if (continuumConfig.schemaRegistryURL != "") {
                 String s3NotificationSchema =
                         "{\"type\":\"record\","
-                                + "\"name\":\"" + "foo" + "_continuum\"," // TODO
+                                + "\"name\":\"" + continuumConfig.topic + "_continuum\","
                                 + "\"namespace\":\"io.confluent.connect.s3.continuum\","
                                 + "\"fields\":["
                                 + "{\"name\":\"filename\",\"type\":\"string\"},"
