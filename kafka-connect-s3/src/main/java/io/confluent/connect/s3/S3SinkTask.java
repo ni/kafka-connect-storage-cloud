@@ -63,8 +63,7 @@ public class S3SinkTask extends SinkTask {
   private RecordWriterProvider<S3SinkConnectorConfig> writerProvider;
   private final Time time;
   private ErrantRecordReporter reporter;
-  private String newFileWrittenTopicName;
-  public S3Continuum continuumProducer;
+  private S3Continuum continuumProducer;
 
 
   /**
@@ -295,12 +294,11 @@ public class S3SinkTask extends SinkTask {
   public void close(Collection<TopicPartition> partitions) {
     for (TopicPartition tp : topicPartitionWriters.keySet()) {
       try {
-        topicPartitionWriters.get(tp).close(); // todo: close our producer here
+        topicPartitionWriters.get(tp).close();
       } catch (ConnectException e) {
         log.error("Error closing writer for {}. Error: {}", tp, e.getMessage());
       }
     }
-    // todo:
     topicPartitionWriters.clear();
   }
 

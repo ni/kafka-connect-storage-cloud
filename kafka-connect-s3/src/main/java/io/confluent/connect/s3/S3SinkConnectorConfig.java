@@ -724,7 +724,6 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
 
   protected S3SinkConnectorConfig(ConfigDef configDef, Map<String, String> props) {
     super(configDef, props);
-    // TODO: we gotta add this to a config def or some shit
     ConfigDef storageCommonConfigDef = StorageCommonConfig.newConfigDef(STORAGE_CLASS_RECOMMENDER);
     StorageCommonConfig commonConfig = new StorageCommonConfig(storageCommonConfigDef,
         originalsStrings());

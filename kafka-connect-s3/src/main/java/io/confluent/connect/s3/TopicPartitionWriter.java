@@ -16,22 +16,16 @@
 package io.confluent.connect.s3;
 
 import com.amazonaws.SdkClientException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.connect.s3.continuum.S3Continuum;
 import io.confluent.connect.s3.storage.S3Storage;
 import io.confluent.connect.s3.util.RetryUtil;
 import io.confluent.connect.storage.errors.PartitionException;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.IllegalWorkerStateException;
 import org.apache.kafka.connect.errors.SchemaProjectorException;
-import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.json.JsonSerializer;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTaskContext;
@@ -184,8 +178,6 @@ public class TopicPartitionWriter {
     // Initialize scheduled rotation timer if applicable
     setNextScheduledRotation();
   }
-
-//  private final KafkaProducer<Integer, String> producer;
 
   private enum State {
     WRITE_STARTED,
@@ -617,7 +609,6 @@ public class TopicPartitionWriter {
       String encodedPartition = entry.getKey();
       commitFile(encodedPartition);
       if (isTaggingEnabled) {
-        // entry.getValue() is the s3 object path
         RetryUtil.exponentialBackoffRetry(() -> tagFile(encodedPartition, entry.getValue()),
                 ConnectException.class,
                 connectorConfig.getInt(S3_PART_RETRIES_CONFIG),

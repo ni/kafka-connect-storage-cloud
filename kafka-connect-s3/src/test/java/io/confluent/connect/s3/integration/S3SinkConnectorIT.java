@@ -118,7 +118,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   // DLQ Tests
   private static final String DLQ_TOPIC_CONFIG = "errors.deadletterqueue.topic.name";
   private static final String DLQ_TOPIC_NAME = "DLQ-topic";
-  private static final String NEW_FILE_WRITTEN_TOPIC_NAME = "new-file-written-topic";
+  private static final String CONTINUUM_TOPIC_NAME = "new-file-written-topic";
 
   private static final List<String> KAFKA_TOPICS = Arrays.asList(DEFAULT_TEST_TOPIC_NAME);
   private static final long CONSUME_MAX_DURATION_MS = TimeUnit.SECONDS.toMillis(10);
@@ -168,7 +168,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(S3_BUCKET_CONFIG, TEST_BUCKET_NAME);
     // create topics in Kafka
     KAFKA_TOPICS.forEach(topic -> connect.kafka().createTopic(topic, 1));
-    connect.kafka().createTopic(NEW_FILE_WRITTEN_TOPIC_NAME, 1);
+    connect.kafka().createTopic(CONTINUUM_TOPIC_NAME, 1);
   }
 
   @After
@@ -291,11 +291,16 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
     // There should be one message per file
-    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
+    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, CONTINUUM_TOPIC_NAME);
     assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD, TOPIC_PARTITION);
   }
 
-  private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages, int expectedMessageCount, Set<String> expectedFileNames, long expectedRecordsPerFile, int expectedPartition) {
+  // todo: move me
+  private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages,
+                                                 int expectedMessageCount,
+                                                 Set<String> expectedFileNames,
+                                                 long expectedRecordsPerFile,
+                                                 int expectedPartition) {
     assertEquals(expectedMessageCount, continuumMessages.count());
 
     HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
@@ -741,7 +746,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
-    props.put(CONTINUUM_TOPIC_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
+    props.put(CONTINUUM_TOPIC_CONFIG, CONTINUUM_TOPIC_NAME);
     props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(TOPIC_PARTITION));
     // we use JSON for the integration tests so that we don't have to spin up schema registry
     props.put(CONTINUUM_VALUE_CONVERTER_CONFIG, org.apache.kafka.connect.json.JsonSerializer.class.getName());
