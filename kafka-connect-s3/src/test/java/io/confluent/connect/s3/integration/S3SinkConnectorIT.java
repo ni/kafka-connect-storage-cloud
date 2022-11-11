@@ -36,10 +36,9 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 
-import io.confluent.connect.s3.NewFileWrittenMessageBody;
+import io.confluent.connect.s3.continuum.NewFileWrittenMessageBody;
 import io.confluent.connect.s3.S3SinkConnector;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
 import io.confluent.connect.s3.format.avro.AvroFormat;
@@ -62,19 +61,15 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -297,46 +292,22 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
 
     // There should be one message per file
     ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, NEW_FILE_WRITTEN_TOPIC_NAME);
-    assertEquals(expectedTotalFileCount, newFileWrittenRecords.count());
     assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD, TOPIC_PARTITION);
-//    int numRecords = newFileWrittenRecords.count();
-//    newFileWrittenRecords.records(NEW_FILE_WRITTEN_TOPIC_NAME).forEach(record -> {
-//      String value = new String(record.value());
-//      System.out.println("Key: " + record.key());
-//      System.out.println("Value: " + value);
-//      System.out.println("Normalized value: " + value);
-//      ObjectMapper mapper = new ObjectMapper();
-//      try {
-//        NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
-//        System.out.println(message.filename);
-//      } catch (JsonProcessingException e) {
-//        throw new RuntimeException(e);
-//      }
-//    });
-//    assertTrue(numRecords > 0);
   }
 
   private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages, int expectedMessageCount, Set<String> expectedFileNames, long expectedRecordsPerFile, int expectedPartition) {
-    HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
     assertEquals(expectedMessageCount, continuumMessages.count());
-    long offset = 0;
+
+    HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
+    ObjectMapper mapper = new ObjectMapper();
     for (ConsumerRecord<byte[], byte[]> record : continuumMessages) {
       String value = new String(record.value());
-      ObjectMapper mapper = new ObjectMapper();
       try {
         NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
-        System.out.println(message.filename);
-
         assertTrue(expectedFileNamesCopy.contains(message.filename));
         expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
-        if (offset == 30L) {
-            System.out.println("Offset 30: " + message.filename);
-        }
 
         assertEquals(expectedRecordsPerFile, message.recordCount);
-
-//        assertEquals(offset, message.offset); // TODO
-//        offset += expectedRecordsPerFile;
 
         assertEquals(record.partition(), expectedPartition);
       } catch (JsonProcessingException e) {
@@ -769,9 +740,6 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // converters
     props.put(KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-    props.put(KAFKA_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
-    props.put(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
-    props.put(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG, Boolean.toString(true));
     props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
     props.put(CONTINUUM_TOPIC_CONFIG, NEW_FILE_WRITTEN_TOPIC_NAME);
     props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(TOPIC_PARTITION));

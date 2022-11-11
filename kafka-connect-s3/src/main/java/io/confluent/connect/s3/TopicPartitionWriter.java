@@ -648,58 +648,13 @@ public class TopicPartitionWriter {
       RecordWriter writer = writers.get(encodedPartition);
       // Commits the file and closes the underlying output stream.
       writer.commit();
-      final Serializer<JsonNode> jsonSerializer = new JsonSerializer();
 
-      String kafkaUrl = this.connectorConfig.getString(KAFKA_BOOTSTRAP_SERVERS_CONFIG);
-      String kafkaTopicName = this.connectorConfig.getString(NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG);
-      Map<String, Object> producerProps = new HashMap<>();
-      producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaUrl);
-      producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-            org.apache.kafka.common.serialization.ByteArraySerializer.class.getName());
-      producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-            org.apache.kafka.connect.json.JsonSerializer.class.getName());
-
-      // TODO: hook up a JSON serializer here instead
-      // maybe: org.apache.kafka.connect.json.JsonSerializer.class.getName()
-
-      Map<String, Object> jsonConverterProps = new HashMap<>();
-      JsonConverter jsonConverter;
-      jsonConverterProps.put("schemas.enable", "false");
-      jsonConverterProps.put("converter.type", "value");
-      jsonConverter = new JsonConverter();
-      jsonConverter.configure(jsonConverterProps);
-      ObjectMapper mapper = new ObjectMapper();
-
-      if (connectorConfig.getBoolean(NEW_FILE_WRITTEN_NOTIFICATIONS_ENABLED_CONFIG)) { // todo
-        try {
-          Long startOffset = startOffsets.get(encodedPartition);
-          Long recordCount = recordCounts.get(encodedPartition);
-          String filename = getCommitFilename(encodedPartition);
-
-          NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
-          body.filename = filename;
-          body.offset = startOffset;
-          body.recordCount = recordCount;
-//                    JsonNode node = mapper.valueToTree(body);
-
-
-//          ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
-
-          // TODO: think about the key. filename might be reasonable. null might be too.
-//          SinkRecord record = new SinkRecord(kafkaTopicName, 0, Schema.STRING_SCHEMA, "pvkey", Schema.STRING_SCHEMA, body, 0);
-//          byte[] kafkaKey = jsonConverter.fromConnectData(kafkaTopicName, Schema.STRING_SCHEMA, record.key());
-//          ProducerRecord<byte[], JsonNode> producerRecord =
-//                  new ProducerRecord<>(kafkaTopicName, 0, kafkaKey, node);
-//
-//          Producer<byte[], JsonNode> producer = new KafkaProducer<>(producerProps);
-//          producer.send(producerRecord);
-//          producer.flush();
-          continuumProducer.produce("foo", filename, startOffset, recordCount);
-          // TODO: close
-//        producer.close();
-        } catch (Exception e) {
-          log.error("Error sending to kafka: {}", e.getMessage());
-        }
+      try {
+        String filename = getCommitFilename(encodedPartition);
+        continuumProducer.produce(filename, filename, startOffsets.get(encodedPartition), recordCounts.get(encodedPartition));
+      } catch (Exception e) {
+        // TODO
+        log.error("Error sending to kafka: {}", e.getMessage());
       }
       writers.remove(encodedPartition);
       log.debug("Removed writer for '{}'", encodedPartition);

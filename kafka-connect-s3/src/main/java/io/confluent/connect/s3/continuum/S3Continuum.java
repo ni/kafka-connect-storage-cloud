@@ -2,7 +2,6 @@ package io.confluent.connect.s3.continuum;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.confluent.connect.s3.NewFileWrittenMessageBody;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -39,7 +38,6 @@ public class S3Continuum {
             props.put(SCHEMA_REGISTRY_URL_CONFIG, continuumConfig.schemaRegistryURL);
             props.put(KEY_SERIALIZER_CLASS_CONFIG,
                     org.apache.kafka.common.serialization.StringSerializer.class);
-            // TODO: use value converter from config
             props.put(VALUE_SERIALIZER_CLASS_CONFIG,
                     continuumConfig.valueConverter);
             producer = new KafkaProducer<>(props);
@@ -81,15 +79,12 @@ public class S3Continuum {
                 value.put("filename", filename);
                 value.put("offset", offset);
                 value.put("recordCount", recordCount);
-                producer.send(new ProducerRecord<>(topic, key, value));
-            } else {
-                NewFileWrittenMessageBody body = new NewFileWrittenMessageBody();
-                body.filename = filename;
-                body.offset = offset;
-                body.recordCount = recordCount;
-                JsonNode node = mapper.valueToTree(body);
 
-                producer.send(new ProducerRecord<>(topic, partition, key, node));
+                producer.send(new ProducerRecord<>(topic, partition, key, value));
+            } else {
+                JsonNode value = mapper.valueToTree(new NewFileWrittenMessageBody(filename, offset, recordCount));
+
+                producer.send(new ProducerRecord<>(topic, partition, key, value));
             }
         }
     }

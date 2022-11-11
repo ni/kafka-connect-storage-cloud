@@ -41,7 +41,7 @@ public class S3ContinuumConfig {
     public static final String CONTINUUM_TOPIC_PARTITION_CONFIG =
             "continuum.topic.partition";
     private static final String CONTINUUM_TOPIC_PARTITION_DOC =
-            "The partition to which the continuum should publish to.";
+            "The partition to which the Continuum should publish to.";
     private static final String CONTINUUM_TOPIC_PARTITION_DISPLAY =
             "Continuum Topic Partition";
 

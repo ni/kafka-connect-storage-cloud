@@ -102,9 +102,7 @@ public class S3SinkTask extends SinkTask {
       connectorConfig = new S3SinkConnectorConfig(props);
       url = connectorConfig.getString(StorageCommonConfig.STORE_URL_CONFIG);
       timeoutMs = connectorConfig.getLong(S3SinkConnectorConfig.RETRY_BACKOFF_CONFIG);
-      this.newFileWrittenTopicName = this.connectorConfig.getString(S3SinkConnectorConfig.NEW_FILE_WRITTEN_TOPIC_NAME_CONFIG);
       if (continuumProducer == null) {
-        // TODO
         continuumProducer = new S3Continuum(connectorConfig);
       }
       @SuppressWarnings("unchecked")
