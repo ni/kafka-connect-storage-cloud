@@ -45,7 +45,7 @@ public class S3Continuum {
             if (continuumConfig.schemaRegistryURL != "") {
                 String s3NotificationSchema =
                         "{\"type\":\"record\","
-                                + "\"name\":\"" + continuumConfig.topic + "_continuum\","
+                                + "\"name\":\"" + "new_file_ingested_schema" + "_continuum\","
                                 + "\"namespace\":\"io.confluent.connect.s3.continuum\","
                                 + "\"fields\":["
                                 + "{\"name\":\"filename\",\"type\":\"string\"},"
