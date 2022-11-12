@@ -5,7 +5,9 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Validator;
 import org.apache.kafka.common.config.ConfigException;
 
-public class S3ContinuumConfig {
+import java.util.Map;
+
+public class S3ContinuumConfig extends AbstractConfig {
     private static final String CONTINUUM_GROUP = "Continuum";
 
     public static final String CONTINUUM_TOPIC_CONFIG =
@@ -44,6 +46,10 @@ public class S3ContinuumConfig {
                     " and org.apache.kafka.connect.json.JsonSerializer for JSON";
     private static final String CONTINUUM_VALUE_CONVERTER_DISPLAY =
             "Continuum Value Serializer";
+
+    public S3ContinuumConfig(Map<?, ?> props) {
+        super(continuumDefs(new ConfigDef()), props);
+    }
 
     public static S3ContinuumConfigValues parseConfigValues(AbstractConfig config) {
         S3ContinuumConfigValues values = new S3ContinuumConfigValues();
@@ -93,7 +99,7 @@ public class S3ContinuumConfig {
                 .define(
                         CONTINUUM_TOPIC_PARTITION_CONFIG,
                         ConfigDef.Type.INT,
-                        1,
+                        0,
                         ConfigDef.Importance.LOW,
                         CONTINUUM_TOPIC_PARTITION_DOC,
                         CONTINUUM_GROUP,

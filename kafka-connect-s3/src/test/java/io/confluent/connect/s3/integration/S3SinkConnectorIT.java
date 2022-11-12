@@ -43,7 +43,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 
-import io.confluent.connect.s3.continuum.NewFileWrittenMessageBody;
+import io.confluent.connect.s3.continuum.NewFileCommittedMessageBody;
 import io.confluent.connect.s3.S3SinkConnector;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
 import io.confluent.connect.s3.format.avro.AvroFormat;
@@ -329,7 +329,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     for (ConsumerRecord<byte[], byte[]> record : continuumMessages) {
       String value = new String(record.value());
       try {
-        NewFileWrittenMessageBody message = mapper.readValue(value, NewFileWrittenMessageBody.class);
+        NewFileCommittedMessageBody message = mapper.readValue(value, NewFileCommittedMessageBody.class);
         assertTrue(expectedFileNamesCopy.contains(message.filename));
         expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
 

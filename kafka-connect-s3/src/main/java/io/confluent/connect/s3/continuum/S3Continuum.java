@@ -82,7 +82,7 @@ public class S3Continuum {
 
                 producer.send(new ProducerRecord<>(topic, partition, key, value));
             } else {
-                JsonNode value = mapper.valueToTree(new NewFileWrittenMessageBody(filename, offset, recordCount));
+                JsonNode value = mapper.valueToTree(new NewFileCommittedMessageBody(filename, offset, recordCount));
 
                 producer.send(new ProducerRecord<>(topic, partition, key, value));
             }
