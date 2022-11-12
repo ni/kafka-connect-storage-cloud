@@ -55,7 +55,8 @@ import io.confluent.connect.storage.partitioner.TimestampExtractor;
 import io.confluent.connect.storage.schema.StorageSchemaCompatibility;
 import io.confluent.connect.storage.util.DateTimeUtils;
 
-import static io.confluent.connect.s3.S3SinkConnectorConfig.*;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.S3_PART_RETRIES_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.S3_RETRY_BACKOFF_CONFIG;
 
 public class TopicPartitionWriter {
   private static final Logger log = LoggerFactory.getLogger(TopicPartitionWriter.class);

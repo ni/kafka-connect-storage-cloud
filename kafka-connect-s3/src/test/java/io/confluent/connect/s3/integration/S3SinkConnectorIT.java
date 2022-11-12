@@ -15,7 +15,12 @@
 
 package io.confluent.connect.s3.integration;
 
-import static io.confluent.connect.s3.S3SinkConnectorConfig.*;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.BEHAVIOR_ON_NULL_VALUES_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.S3_BUCKET_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_HEADERS_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_KEYS_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_ACCESS_KEY_ID_CONFIG;
+import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
 import static io.confluent.connect.s3.continuum.S3ContinuumConfig.*;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FLUSH_SIZE_CONFIG;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FORMAT_CLASS_CONFIG;
@@ -49,7 +54,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -291,8 +305,14 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
     // There should be one message per file
-    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount, 1000, CONTINUUM_TOPIC_NAME);
-    assertContinuumMessagesAsExpected(newFileWrittenRecords, expectedTotalFileCount, expectedTopicFilenames, FLUSH_SIZE_STANDARD, TOPIC_PARTITION);
+    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount,
+            1000,
+            CONTINUUM_TOPIC_NAME);
+    assertContinuumMessagesAsExpected(newFileWrittenRecords,
+            expectedTotalFileCount,
+            expectedTopicFilenames,
+            FLUSH_SIZE_STANDARD,
+            TOPIC_PARTITION);
   }
 
   // todo: move me
@@ -300,7 +320,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
                                                  int expectedMessageCount,
                                                  Set<String> expectedFileNames,
                                                  long expectedRecordsPerFile,
-                                                 int expectedPartition) {
+                                                 int expectedPartition)
+          throws JsonProcessingException {
     assertEquals(expectedMessageCount, continuumMessages.count());
 
     HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
@@ -316,7 +337,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
 
         assertEquals(record.partition(), expectedPartition);
       } catch (JsonProcessingException e) {
-        throw new RuntimeException(e);
+        log.error("Error parsing JSON: {}", e);
+        throw e;
       }
     }
   }

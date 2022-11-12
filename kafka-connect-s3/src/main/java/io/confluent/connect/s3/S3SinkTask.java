@@ -65,7 +65,6 @@ public class S3SinkTask extends SinkTask {
   private ErrantRecordReporter reporter;
   private S3Continuum continuumProducer;
 
-
   /**
    * No-arg constructor. Used by Connect framework.
    */

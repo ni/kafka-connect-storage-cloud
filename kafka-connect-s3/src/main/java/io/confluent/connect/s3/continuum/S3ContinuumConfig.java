@@ -11,21 +11,28 @@ public class S3ContinuumConfig {
     public static final String CONTINUUM_TOPIC_CONFIG =
             "continuum.topic";
     private static final String CONTINUUM_TOPIC_DOC =
-            "The topic to send events to once the record is processed.";
+            "The topic to send events to when new files are written.";
     private static final String CONTINUUM_TOPIC_DISPLAY =
             "Continuum Topic";
+
+    public static final String CONTINUUM_TOPIC_PARTITION_CONFIG =
+            "continuum.topic.partition";
+    private static final String CONTINUUM_TOPIC_PARTITION_DOC =
+            "The partition of the topic to which the Continuum should publish to.";
+    private static final String CONTINUUM_TOPIC_PARTITION_DISPLAY =
+            "Continuum Topic Partition";
 
     public static final String CONTINUUM_BOOTSTRAP_SERVERS_CONFIG =
             "continuum.bootstrap.servers";
     private static final String CONTINUUM_BOOTSTRAP_SERVERS_DOC =
-            "The initial Kafka brokers to established connection to for the continuum topic.";
+            "The Kafka brokers to connect to.";
     private static final String CONTINUUM_BOOTSTRAP_SERVERS_DISPLAY =
             "Continuum Bootstrap Servers";
 
     public static final String CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG =
             "continuum.schema.registry.url";
     private static final String CONTINUUM_SCHEMA_REGISTRY_URL_DOC =
-            "The schema registry service. Required if using Avro as the value converter";
+            "The schema registry service URL. Required if using Avro as the value converter.";
     private static final String CONTINUUM_SCHEMA_REGISTRY_URL_DISPLAY =
             "Continuum Schema Registry";
 
@@ -33,17 +40,10 @@ public class S3ContinuumConfig {
             "continuum.value.converter";
     private static final String CONTINUUM_VALUE_CONVERTER_DOC =
             "The class to use to serialize the values written to the Kafka notification topic. " +
-                    "Supported values include io.confluent.kafka.serializers.KafkaAvroSerializer.class for AVRO," +
+                    "Supported values include io.confluent.kafka.serializers.KafkaAvroSerializer for AVRO," +
                     " and org.apache.kafka.connect.json.JsonSerializer for JSON";
     private static final String CONTINUUM_VALUE_CONVERTER_DISPLAY =
             "Continuum Value Serializer";
-
-    public static final String CONTINUUM_TOPIC_PARTITION_CONFIG =
-            "continuum.topic.partition";
-    private static final String CONTINUUM_TOPIC_PARTITION_DOC =
-            "The partition to which the Continuum should publish to.";
-    private static final String CONTINUUM_TOPIC_PARTITION_DISPLAY =
-            "Continuum Topic Partition";
 
     public static S3ContinuumConfigValues parseConfigValues(AbstractConfig config) {
         S3ContinuumConfigValues values = new S3ContinuumConfigValues();
@@ -51,12 +51,12 @@ public class S3ContinuumConfig {
         values.topic = config
                 .getString(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG)
                 .trim();
+        values.partition = config
+                .getInt(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG);
         values.bootstrapServers = config
                 .getString(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
         values.schemaRegistryURL = config
                 .getString(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
-        values.partition = config
-                .getInt(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG);
         values.valueConverter = config.getString(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
 
         return values;
@@ -65,16 +65,6 @@ public class S3ContinuumConfig {
     public static ConfigDef continuumDefs(ConfigDef defs) {
         return defs
                 .define(
-                        CONTINUUM_BOOTSTRAP_SERVERS_CONFIG,
-                        ConfigDef.Type.STRING,
-                        "",
-                        ConfigDef.Importance.LOW,
-                        CONTINUUM_BOOTSTRAP_SERVERS_DOC,
-                        CONTINUUM_GROUP,
-                        1,
-                        ConfigDef.Width.MEDIUM,
-                        CONTINUUM_BOOTSTRAP_SERVERS_DISPLAY
-                ).define(
                         CONTINUUM_TOPIC_CONFIG,
                         ConfigDef.Type.STRING,
                         "",
@@ -94,23 +84,13 @@ public class S3ContinuumConfig {
 
                             }
                         },
-                        ConfigDef.Importance.LOW,
+                        ConfigDef.Importance.HIGH,
                         CONTINUUM_TOPIC_DOC,
                         CONTINUUM_GROUP,
-                        3,
+                        1,
                         ConfigDef.Width.MEDIUM,
-                        CONTINUUM_TOPIC_DISPLAY
-                ).define(
-                        CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG,
-                        ConfigDef.Type.STRING,
-                        "",
-                        ConfigDef.Importance.LOW,
-                        CONTINUUM_SCHEMA_REGISTRY_URL_DOC,
-                        CONTINUUM_GROUP,
-                        2,
-                        ConfigDef.Width.MEDIUM,
-                        CONTINUUM_SCHEMA_REGISTRY_URL_DISPLAY
-                ).define(
+                        CONTINUUM_TOPIC_DISPLAY)
+                .define(
                         CONTINUUM_TOPIC_PARTITION_CONFIG,
                         ConfigDef.Type.INT,
                         1,
@@ -119,7 +99,27 @@ public class S3ContinuumConfig {
                         CONTINUUM_GROUP,
                         2,
                         ConfigDef.Width.MEDIUM,
-                        CONTINUUM_TOPIC_PARTITION_DISPLAY
+                        CONTINUUM_TOPIC_PARTITION_DISPLAY)
+                .define(
+                        CONTINUUM_BOOTSTRAP_SERVERS_CONFIG,
+                        ConfigDef.Type.STRING,
+                        "",
+                        ConfigDef.Importance.HIGH,
+                        CONTINUUM_BOOTSTRAP_SERVERS_DOC,
+                        CONTINUUM_GROUP,
+                        3,
+                        ConfigDef.Width.MEDIUM,
+                        CONTINUUM_BOOTSTRAP_SERVERS_DISPLAY
+                ).define(
+                        CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG,
+                        ConfigDef.Type.STRING,
+                        "",
+                        ConfigDef.Importance.LOW,
+                        CONTINUUM_SCHEMA_REGISTRY_URL_DOC,
+                        CONTINUUM_GROUP,
+                        4,
+                        ConfigDef.Width.MEDIUM,
+                        CONTINUUM_SCHEMA_REGISTRY_URL_DISPLAY
                 ).define(
                         CONTINUUM_VALUE_CONVERTER_CONFIG,
                         ConfigDef.Type.STRING,
@@ -127,7 +127,7 @@ public class S3ContinuumConfig {
                         ConfigDef.Importance.HIGH,
                         CONTINUUM_VALUE_CONVERTER_DOC,
                         CONTINUUM_GROUP,
-                        2,
+                        5,
                         ConfigDef.Width.MEDIUM,
                         CONTINUUM_VALUE_CONVERTER_DISPLAY);
     }

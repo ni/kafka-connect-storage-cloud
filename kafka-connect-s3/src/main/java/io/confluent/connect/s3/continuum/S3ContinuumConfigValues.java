@@ -15,19 +15,19 @@ public class S3ContinuumConfigValues {
     public String valueConverter;
 
     public boolean isConfigured() {
-        if (topic != "" || bootstrapServers != "") {
+        if (stringIsNullOrEmpty(topic) || stringIsNullOrEmpty(bootstrapServers)) {
             ArrayList<String> missingValues = new ArrayList<String>();
 
-            if (topic == "") {
+            if (stringIsNullOrEmpty(topic)) {
                 missingValues.add(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG);
             }
-            if (bootstrapServers == "") {
+            if (stringIsNullOrEmpty(bootstrapServers)) {
                 missingValues.add(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
             }
-            if (valueConverter == "") {
+            if (stringIsNullOrEmpty(valueConverter)) {
                 missingValues.add(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
             }
-            if (schemaRegistryURL == "" && valueConverter != null && valueConverter.toLowerCase().contains("avro")) {
+            if (stringIsNullOrEmpty(schemaRegistryURL) && !stringIsNullOrEmpty(valueConverter) && valueConverter.toLowerCase().contains("avro")) {
                 missingValues.add(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
             }
 
@@ -43,5 +43,9 @@ public class S3ContinuumConfigValues {
 
         log.info("Continuum properties are not configured.");
         return false;
+    }
+
+    private boolean stringIsNullOrEmpty(String s) {
+        return s == null || s.isEmpty();
     }
 }
