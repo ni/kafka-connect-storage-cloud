@@ -15,7 +15,7 @@ public class S3ContinuumConfigValues {
     public String valueConverter;
 
     public boolean isConfigured() {
-        if (stringIsNullOrEmpty(topic) || stringIsNullOrEmpty(bootstrapServers)) {
+        if (!stringIsNullOrEmpty(topic) && !stringIsNullOrEmpty(bootstrapServers)) {
             ArrayList<String> missingValues = new ArrayList<String>();
 
             if (stringIsNullOrEmpty(topic)) {
