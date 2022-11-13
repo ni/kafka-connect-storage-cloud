@@ -200,42 +200,48 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   public void testBasicRecordsWrittenAvro() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
-    testBasicRecordsWritten(AVRO_EXTENSION, false);
+    testBasicRecordsWritten(AVRO_EXTENSION, false, true);
   }
 
   @Test
   public void testBasicRecordsWrittenParquet() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testBasicRecordsWritten(PARQUET_EXTENSION, false);
+    testBasicRecordsWritten(PARQUET_EXTENSION, false, true);
   }
 
   @Test
   public void testBasicRecordsWrittenJson() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, JsonFormat.class.getName());
-    testBasicRecordsWritten(JSON_EXTENSION, false);
+    testBasicRecordsWritten(JSON_EXTENSION, false, true);
   }
 
   @Test
   public void testFilesWrittenToBucketAvroWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
-    testBasicRecordsWritten(AVRO_EXTENSION, true);
+    //we don't verify the Continuum offsets because this test writes two sets of files,
+    //which would complicate the offset verification logic.
+    testBasicRecordsWritten(AVRO_EXTENSION, true, false);
   }
 
   @Test
   public void testFilesWrittenToBucketParquetWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testBasicRecordsWritten(PARQUET_EXTENSION, true);
+    //we don't verify the Continuum offsets because this test writes two sets of files,
+    //which would complicate the offset verification logic.
+    testBasicRecordsWritten(PARQUET_EXTENSION, true, false);
   }
 
   @Test
   public void testFilesWrittenToBucketJsonWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, JsonFormat.class.getName());
-    testBasicRecordsWritten(JSON_EXTENSION, true);
+    //we don't verify the Continuum offsets because this test writes two sets of files,
+    //which would complicate the offset verification logic.
+    testBasicRecordsWritten(JSON_EXTENSION, true, false);
   }
 
   @Test
@@ -245,7 +251,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
     //the formatter isn't relevant here, but we'll arbitrarily use parquet
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testBasicRecordsWritten(PARQUET_EXTENSION, false);
+    testBasicRecordsWritten(PARQUET_EXTENSION, false, true);
   }
 
   /**
@@ -258,7 +264,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
    */
   private void testBasicRecordsWritten(
           String expectedFileExtension,
-          boolean addExtensionInTopic
+          boolean addExtensionInTopic,
+          boolean verifyContinuumNotificationOffsets
   ) throws Throwable {
     final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
 
@@ -323,7 +330,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
             expectedTotalFileCount,
             expectedTopicFilenames,
             FLUSH_SIZE_STANDARD,
-            CONTINUUM_TOPIC_PARTITION);
+            CONTINUUM_TOPIC_PARTITION,
+            verifyContinuumNotificationOffsets);
   }
 
   // todo: move me
@@ -331,18 +339,26 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
                                                  int expectedMessageCount,
                                                  Set<String> expectedFileNames,
                                                  long expectedRecordsPerFile,
-                                                 int expectedPartition)
+                                                 int expectedPartition,
+                                                 boolean verifyOffsets)
           throws JsonProcessingException {
     assertEquals(expectedMessageCount, continuumMessages.count());
 
     HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
     ObjectMapper mapper = new ObjectMapper();
+    long offset = 0;
     for (ConsumerRecord<byte[], byte[]> record : continuumMessages) {
       String value = new String(record.value());
       try {
         NewFileCommittedMessageBody message = mapper.readValue(value, NewFileCommittedMessageBody.class);
+
         assertTrue(expectedFileNamesCopy.contains(message.filename));
         expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
+
+        if (verifyOffsets) {
+          assertEquals(offset, message.offset);
+          offset += expectedRecordsPerFile;
+        }
 
         assertEquals(expectedRecordsPerFile, message.recordCount);
 
