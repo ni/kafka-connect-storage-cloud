@@ -109,7 +109,15 @@ public class TopicPartitionWriter {
                               S3SinkConnectorConfig connectorConfig,
                               SinkTaskContext context,
                               ErrantRecordReporter reporter) {
-    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, reporter, null);
+    this(tp,
+            storage,
+            writerProvider,
+            partitioner,
+            connectorConfig,
+            context,
+            SYSTEM_TIME,
+            reporter,
+            null);
   }
 
   // Visible for testing
@@ -643,7 +651,11 @@ public class TopicPartitionWriter {
 
       try {
         String filename = getCommitFilename(encodedPartition);
-        continuumProducer.produce(filename, filename, startOffsets.get(encodedPartition), recordCounts.get(encodedPartition));
+        continuumProducer.produce(
+                filename,
+                filename,
+                startOffsets.get(encodedPartition),
+                recordCounts.get(encodedPartition));
       } catch (Exception e) {
         log.error("Error publishing Continuum notification to Kafka: {}", e.getMessage());
       }

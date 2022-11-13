@@ -10,121 +10,121 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class S3ContinuumConfigTest {
-    private Map<String, String> localProps = new HashMap<>();
-    private final String topic = "test-topic";
-    private final String bootstrapServers = "localhost:9092";
-    private final String schemaRegistryURL = "http://localhost:8081";
-    private final String avroConverter = "io.confluent.connect.avro.AvroConverter";
-    private final String jsonConverter = "org.apache.kafka.connect.json.JsonConverter";
-    private final int partition = 0;
+  private Map<String, String> localProps = new HashMap<>();
+  private final String topic = "test-topic";
+  private final String bootstrapServers = "localhost:9092";
+  private final String schemaRegistryURL = "http://localhost:8081";
+  private final String avroConverter = "io.confluent.connect.avro.AvroConverter";
+  private final String jsonConverter = "org.apache.kafka.connect.json.JsonConverter";
+  private final int partition = 0;
 
-    private Map<String, String> createProps() {
-        Map<String, String> props = new HashMap<>();
-        props.put(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG, topic);
-        props.put(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(partition));
-        props.put(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        return props;
-    }
+  private Map<String, String> createProps() {
+    Map<String, String> props = new HashMap<>();
+    props.put(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG, topic);
+    props.put(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(partition));
+    props.put(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    return props;
+  }
 
-    private void configureWithAvroConverter() {
-        this.localProps.put(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryURL);
-        this.localProps.put(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG, avroConverter);
-    }
+  private void configureWithAvroConverter() {
+    this.localProps.put(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryURL);
+    this.localProps.put(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG, avroConverter);
+  }
 
-    private void configureWithJsonConverter() {
-        this.localProps.put(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG, jsonConverter);
-    }
+  private void configureWithJsonConverter() {
+    this.localProps.put(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG, jsonConverter);
+  }
 
-    @Before
-    public void setUp() {
-        this.localProps = createProps();
-    }
+  @Before
+  public void setUp() {
+    this.localProps = createProps();
+  }
 
-    @After
-    public void tearDown() throws Exception {
-        localProps.clear();
-    }
+  @After
+  public void tearDown() throws Exception {
+    localProps.clear();
+  }
 
-    @Test
-    public void parseConfigValues_ValidAvroValues_Configured() {
-        configureWithAvroConverter();
+  @Test
+  public void parseConfigValues_ValidAvroValues_Configured() {
+    configureWithAvroConverter();
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertEquals(this.topic, values.topic);
-        assertEquals(this.bootstrapServers, values.bootstrapServers);
-        assertEquals(this.schemaRegistryURL, values.schemaRegistryURL);
-        assertEquals(this.avroConverter, values.valueConverter);
-        assertTrue(values.isConfigured());
-    }
+    assertEquals(this.topic, values.topic);
+    assertEquals(this.bootstrapServers, values.bootstrapServers);
+    assertEquals(this.schemaRegistryURL, values.schemaRegistryURL);
+    assertEquals(this.avroConverter, values.valueConverter);
+    assertTrue(values.isConfigured());
+  }
 
-    @Test
-    public void parseConfigValues_ValidJsonValues_Configured() {
-        configureWithJsonConverter();
+  @Test
+  public void parseConfigValues_ValidJsonValues_Configured() {
+    configureWithJsonConverter();
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertEquals(this.topic, values.topic);
-        assertEquals(this.partition, values.partition);
-        assertEquals(this.bootstrapServers, values.bootstrapServers);
-        assertEquals(this.jsonConverter, values.valueConverter);
-        assertTrue(values.isConfigured());
-    }
+    assertEquals(this.topic, values.topic);
+    assertEquals(this.partition, values.partition);
+    assertEquals(this.bootstrapServers, values.bootstrapServers);
+    assertEquals(this.jsonConverter, values.valueConverter);
+    assertTrue(values.isConfigured());
+  }
 
-    @Test
-    public void parseConfigValues_MissingSchemaRegistryUrl_NotConfigured() {
-        configureWithAvroConverter();
-        localProps.remove(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
+  @Test
+  public void parseConfigValues_MissingSchemaRegistryUrl_NotConfigured() {
+    configureWithAvroConverter();
+    localProps.remove(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertFalse(values.isConfigured());
-    }
+    assertFalse(values.isConfigured());
+  }
 
-    @Test
-    public void parseConfigValues_MissingConverter_NotConfigured() {
-        configureWithAvroConverter();
-        localProps.remove(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
+  @Test
+  public void parseConfigValues_MissingConverter_NotConfigured() {
+    configureWithAvroConverter();
+    localProps.remove(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertFalse(values.isConfigured());
-    }
+    assertFalse(values.isConfigured());
+  }
 
-    @Test
-    public void parseConfigValues_MissingBootstrapServers_NotConfigured() {
-        configureWithAvroConverter();
-        localProps.remove(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
+  @Test
+  public void parseConfigValues_MissingBootstrapServers_NotConfigured() {
+    configureWithAvroConverter();
+    localProps.remove(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertFalse(values.isConfigured());
-    }
+    assertFalse(values.isConfigured());
+  }
 
-    @Test
-    public void parseConfigValues_MissingTopic_NotConfigured() {
-        configureWithAvroConverter();
-        localProps.remove(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG);
+  @Test
+  public void parseConfigValues_MissingTopic_NotConfigured() {
+    configureWithAvroConverter();
+    localProps.remove(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG);
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertFalse(values.isConfigured());
-    }
+    assertFalse(values.isConfigured());
+  }
 
-    @Test
-    public void parseConfigValues_MissingPartition_Configured() {
-        configureWithAvroConverter();
-        localProps.remove(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG);
+  @Test
+  public void parseConfigValues_MissingPartition_Configured() {
+    configureWithAvroConverter();
+    localProps.remove(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG);
 
-        S3ContinuumConfig config = new S3ContinuumConfig(localProps);
-        S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
+    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
-        assertTrue(values.isConfigured());
-    }
+    assertTrue(values.isConfigured());
+  }
 }

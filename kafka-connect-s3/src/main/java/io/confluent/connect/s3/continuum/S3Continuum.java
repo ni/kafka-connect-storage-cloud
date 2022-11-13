@@ -1,3 +1,19 @@
+/*
+ * Copyright 2017 Confluent Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.confluent.connect.s3.continuum;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,84 +37,85 @@ import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CL
 import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG;
 
 public class S3Continuum {
-    private static final Logger log = LoggerFactory.getLogger(S3Continuum.class);
+  private static final Logger log = LoggerFactory.getLogger(S3Continuum.class);
 
-    private Producer<Object, Object> producer;
-    private String topic;
-    private int partition;
-    private ObjectMapper mapper;
-    private Schema valueSchema;
+  private Producer<Object, Object> producer;
+  private String topic;
+  private int partition;
+  private ObjectMapper mapper;
+  private Schema valueSchema;
 
-    public S3Continuum(AbstractConfig config) {
-        final S3ContinuumConfigValues continuumConfig = S3ContinuumConfig.parseConfigValues(config);
+  public S3Continuum(AbstractConfig config) {
+    final S3ContinuumConfigValues continuumConfig = S3ContinuumConfig.parseConfigValues(config);
 
-        if (continuumConfig.isConfigured()) {
-            Properties props = new Properties();
-            props.put(BOOTSTRAP_SERVERS_CONFIG, continuumConfig.bootstrapServers);
-            props.put(SCHEMA_REGISTRY_URL_CONFIG, continuumConfig.schemaRegistryURL);
-            props.put(KEY_SERIALIZER_CLASS_CONFIG,
-                    org.apache.kafka.common.serialization.StringSerializer.class);
-            props.put(VALUE_SERIALIZER_CLASS_CONFIG,
-                    continuumConfig.valueConverter);
-            producer = new KafkaProducer<>(props);
+    if (continuumConfig.isConfigured()) {
+      Properties props = new Properties();
+      props.put(BOOTSTRAP_SERVERS_CONFIG, continuumConfig.bootstrapServers);
+      props.put(SCHEMA_REGISTRY_URL_CONFIG, continuumConfig.schemaRegistryURL);
+      props.put(KEY_SERIALIZER_CLASS_CONFIG,
+              org.apache.kafka.common.serialization.StringSerializer.class);
+      props.put(VALUE_SERIALIZER_CLASS_CONFIG,
+              continuumConfig.valueConverter);
+      producer = new KafkaProducer<>(props);
 
-            if (continuumConfig.schemaRegistryURL != "") {
-                String s3NotificationSchema =
-                        "{\"type\":\"record\","
-                                + "\"name\":\"" + "new_file_ingested_schema" + "_continuum\","
-                                + "\"namespace\":\"io.confluent.connect.s3.continuum\","
-                                + "\"fields\":["
-                                + "{\"name\":\"filename\",\"type\":\"string\"},"
-                                + "{\"name\":\"offset\",\"type\":\"long\"},"
-                                + "{\"name\":\"recordCount\",\"type\":\"long\"}"
-                                + "]}";
-                Schema.Parser parser = new Schema.Parser();
-                valueSchema = parser.parse(s3NotificationSchema);
-            } else {
-                mapper = new ObjectMapper();
-            }
+      if (continuumConfig.schemaRegistryURL != "") {
+        String s3NotificationSchema =
+                "{\"type\":\"record\","
+                        + "\"name\":\"" + "new_file_ingested_schema" + "_continuum\","
+                        + "\"namespace\":\"io.confluent.connect.s3.continuum\","
+                        + "\"fields\":["
+                        + "{\"name\":\"filename\",\"type\":\"string\"},"
+                        + "{\"name\":\"offset\",\"type\":\"long\"},"
+                        + "{\"name\":\"recordCount\",\"type\":\"long\"}"
+                        + "]}";
+        Schema.Parser parser = new Schema.Parser();
+        valueSchema = parser.parse(s3NotificationSchema);
+      } else {
+        mapper = new ObjectMapper();
+      }
 
-            topic = continuumConfig.topic;
-            partition = continuumConfig.partition;
+      topic = continuumConfig.topic;
+      partition = continuumConfig.partition;
 
-            log.info("Created Continuum producer with topic {}", topic);
-        } else {
-            log.info("No Continuum producer created");
-        }
+      log.info("Created Continuum producer with topic {}", topic);
+    } else {
+      log.info("No Continuum producer created");
     }
+  }
 
-    public boolean isActive() {
-        return producer != null;
+  public boolean isActive() {
+    return producer != null;
+  }
+
+  public void produce(String key, String filename, long offset, long recordCount) {
+    if (isActive()) {
+      boolean usingAvro = valueSchema != null;
+      if (usingAvro) {
+        GenericRecord value = new GenericData.Record(valueSchema);
+        value.put("filename", filename);
+        value.put("offset", offset);
+        value.put("recordCount", recordCount);
+
+        producer.send(new ProducerRecord<>(topic, partition, key, value));
+      } else {
+        JsonNode value = mapper.valueToTree(
+          new NewFileCommittedMessageBody(filename, offset, recordCount));
+
+        producer.send(new ProducerRecord<>(topic, partition, key, value));
+      }
     }
+  }
 
-    public void produce(String key, String filename, long offset, long recordCount) {
-        if (isActive()) {
-            boolean usingAvro = valueSchema != null;
-            if (usingAvro) {
-                GenericRecord value = new GenericData.Record(valueSchema);
-                value.put("filename", filename);
-                value.put("offset", offset);
-                value.put("recordCount", recordCount);
-
-                producer.send(new ProducerRecord<>(topic, partition, key, value));
-            } else {
-                JsonNode value = mapper.valueToTree(new NewFileCommittedMessageBody(filename, offset, recordCount));
-
-                producer.send(new ProducerRecord<>(topic, partition, key, value));
-            }
-        }
+  public void stop() {
+    if (producer != null) {
+      log.debug("Stopping S3Continuum... Continuum producer detected, closing producer.");
+      try {
+        producer.close(Duration.ofSeconds(10));
+      } catch (Throwable t) {
+        log.warn("Error while closing the continuum producer: ", t);
+      } finally {
+        producer = null;
+      }
     }
-
-    public void stop() {
-        if (producer != null) {
-            log.debug("Stopping S3Continuum... Continuum producer detected, closing producer.");
-            try {
-                producer.close(Duration.ofSeconds(10));
-            } catch (Throwable t) {
-                log.warn("Error while closing the continuum producer: ", t);
-            } finally {
-                producer = null;
-            }
-        }
-    }
+  }
 }
