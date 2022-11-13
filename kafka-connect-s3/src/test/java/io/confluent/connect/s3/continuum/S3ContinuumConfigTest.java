@@ -64,7 +64,7 @@ public class S3ContinuumConfigTest {
   public void parseConfigValues_ValidAvroValues_Configured() {
     configureWithAvroConverter();
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertEquals(this.topic, values.topic);
@@ -78,7 +78,7 @@ public class S3ContinuumConfigTest {
   public void parseConfigValues_ValidJsonValues_Configured() {
     configureWithJsonConverter();
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertEquals(this.topic, values.topic);
@@ -93,7 +93,7 @@ public class S3ContinuumConfigTest {
     configureWithAvroConverter();
     localProps.remove(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertFalse(values.isConfigured());
@@ -104,7 +104,7 @@ public class S3ContinuumConfigTest {
     configureWithAvroConverter();
     localProps.remove(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertFalse(values.isConfigured());
@@ -115,7 +115,7 @@ public class S3ContinuumConfigTest {
     configureWithAvroConverter();
     localProps.remove(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertFalse(values.isConfigured());
@@ -126,7 +126,7 @@ public class S3ContinuumConfigTest {
     configureWithAvroConverter();
     localProps.remove(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG);
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertFalse(values.isConfigured());
@@ -137,7 +137,7 @@ public class S3ContinuumConfigTest {
     configureWithAvroConverter();
     localProps.remove(S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG);
 
-    S3ContinuumConfig config = new S3ContinuumConfig(localProps);
+    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
 
     assertTrue(values.isConfigured());
