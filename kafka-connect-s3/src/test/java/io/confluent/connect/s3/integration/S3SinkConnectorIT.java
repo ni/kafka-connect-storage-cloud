@@ -140,6 +140,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   private static final int FLUSH_SIZE_STANDARD = 3;
   private static final int TOPIC_PARTITION = 0;
   private static final int DEFAULT_OFFSET = 0;
+  private int CONTINUUM_TOPIC_PARTITION = 0;
 
   private static final Map<String, Function<String, List<JsonNode>>> contentGetters =
       ImmutableMap.of(
@@ -182,7 +183,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(S3_BUCKET_CONFIG, TEST_BUCKET_NAME);
     // create topics in Kafka
     KAFKA_TOPICS.forEach(topic -> connect.kafka().createTopic(topic, 1));
-    connect.kafka().createTopic(CONTINUUM_TOPIC_NAME, 1);
+    connect.kafka().createTopic(CONTINUUM_TOPIC_NAME, 16);
   }
 
   @After
@@ -235,6 +236,16 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, JsonFormat.class.getName());
     testBasicRecordsWritten(JSON_EXTENSION, true);
+  }
+
+  @Test
+  public void testContinuumNotificationsPublishedToCorrectPartition() throws Throwable {
+    //add test specific props
+    CONTINUUM_TOPIC_PARTITION = 5;
+    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
+    //the formatter isn't relevant here, but we'll arbitrarily use parquet
+    props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
+    testBasicRecordsWritten(PARQUET_EXTENSION, false);
   }
 
   /**
@@ -312,7 +323,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
             expectedTotalFileCount,
             expectedTopicFilenames,
             FLUSH_SIZE_STANDARD,
-            TOPIC_PARTITION);
+            CONTINUUM_TOPIC_PARTITION);
   }
 
   // todo: move me
@@ -769,7 +780,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
     props.put(CONTINUUM_TOPIC_CONFIG, CONTINUUM_TOPIC_NAME);
-    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(TOPIC_PARTITION));
+    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
     // we use JSON for the integration tests so that we don't have to spin up schema registry
     props.put(CONTINUUM_VALUE_CONVERTER_CONFIG, org.apache.kafka.connect.json.JsonSerializer.class.getName());
     // aws credential if exists
