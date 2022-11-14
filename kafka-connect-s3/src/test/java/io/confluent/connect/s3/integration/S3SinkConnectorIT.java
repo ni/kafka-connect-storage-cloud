@@ -322,27 +322,24 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
-    // There should be one message per file
     ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount,
             1000,
             CONTINUUM_TOPIC_NAME);
     assertContinuumMessagesAsExpected(newFileWrittenRecords,
-            expectedTotalFileCount,
             expectedTopicFilenames,
             FLUSH_SIZE_STANDARD,
             CONTINUUM_TOPIC_PARTITION,
             verifyContinuumNotificationOffsets);
   }
 
-  // todo: move me
   private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages,
-                                                 int expectedMessageCount,
                                                  Set<String> expectedFileNames,
                                                  long expectedRecordsPerFile,
                                                  int expectedPartition,
                                                  boolean verifyOffsets)
           throws JsonProcessingException {
-    assertEquals(expectedMessageCount, continuumMessages.count());
+    // There should be one message per file
+    assertEquals(expectedFileNames.size(), continuumMessages.count());
 
     HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
     ObjectMapper mapper = new ObjectMapper();

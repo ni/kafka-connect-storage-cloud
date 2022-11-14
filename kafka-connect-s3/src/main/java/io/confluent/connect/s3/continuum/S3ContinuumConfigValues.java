@@ -31,21 +31,21 @@ public class S3ContinuumConfigValues {
   public String valueConverter;
 
   public boolean isConfigured() {
-    if (!stringIsNullOrEmpty(topic) && !stringIsNullOrEmpty(bootstrapServers)) {
+    if (!stringIsNullOrEmpty(this.topic) && !stringIsNullOrEmpty(this.bootstrapServers)) {
       ArrayList<String> missingValues = new ArrayList<String>();
 
-      if (stringIsNullOrEmpty(topic)) {
+      if (stringIsNullOrEmpty(this.topic)) {
         missingValues.add(S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG);
       }
-      if (stringIsNullOrEmpty(bootstrapServers)) {
+      if (stringIsNullOrEmpty(this.bootstrapServers)) {
         missingValues.add(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
       }
-      if (stringIsNullOrEmpty(valueConverter)) {
+      if (stringIsNullOrEmpty(this.valueConverter)) {
         missingValues.add(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
       }
-      if (stringIsNullOrEmpty(schemaRegistryURL)
-              && !stringIsNullOrEmpty(valueConverter)
-              && valueConverter.toLowerCase().contains("avro")) {
+      if (stringIsNullOrEmpty(this.schemaRegistryURL)
+              && !stringIsNullOrEmpty(this.valueConverter)
+              && this.valueConverter.toLowerCase().contains("avro")) {
         missingValues.add(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
       }
 
