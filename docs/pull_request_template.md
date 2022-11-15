@@ -19,7 +19,7 @@
 ##### Testing done:
 - [ ] Unit tests
 - [ ] Integration tests
-- [ ] I manually ran the integration tests locally
+- [ ] I manually ran the integration tests with `mvn install`
 - [ ] System tests
 - [ ] Manual tests
 
