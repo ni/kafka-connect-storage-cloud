@@ -19,6 +19,7 @@
 ##### Testing done:
 - [ ] Unit tests
 - [ ] Integration tests
+- [ ] I manually ran the integration tests locally
 - [ ] System tests
 - [ ] Manual tests
 
