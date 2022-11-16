@@ -654,7 +654,6 @@ public class TopicPartitionWriter {
         String filename = getCommitFilename(encodedPartition);
         continuumProducer.produce(
                 filename,
-                filename,
                 startOffsets.get(encodedPartition),
                 recordCounts.get(encodedPartition));
       } catch (Exception e) {
