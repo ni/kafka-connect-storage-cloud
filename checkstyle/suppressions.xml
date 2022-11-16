@@ -21,4 +21,8 @@
       files="(TopicPartitionWriter).java"
     />
 
+    <suppress
+      checks="RegexpHeaderCheck"
+      files="(S3Continuum|S3ContinuumConfig|S3ContinuumConfigValues|NewFileCommittedMessageBody).java"
+    />
 </suppressions>
