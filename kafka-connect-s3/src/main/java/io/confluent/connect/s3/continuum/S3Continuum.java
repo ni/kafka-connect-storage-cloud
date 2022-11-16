@@ -39,7 +39,7 @@ import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_
 public class S3Continuum {
   private static final Logger log = LoggerFactory.getLogger(S3Continuum.class);
 
-  private Producer<Object, Object> producer;
+  private Producer<String, Object> producer;
   private String topic;
   private int partition;
   private ObjectMapper mapper;
@@ -100,7 +100,7 @@ public class S3Continuum {
     return this.producer != null;
   }
 
-  public void produce(String filename, long offset, long recordCount) {
+  public void produce(String key, String filename, long offset, long recordCount) {
     if (isActive()) {
       boolean usingAvro = this.valueSchema != null;
       if (usingAvro) {
@@ -109,12 +109,12 @@ public class S3Continuum {
         value.put("offset", offset);
         value.put("recordCount", recordCount);
 
-        this.producer.send(new ProducerRecord<>(this.topic, this.partition, null, value));
+        this.producer.send(new ProducerRecord<>(this.topic, this.partition, key, value));
       } else {
         JsonNode value = this.mapper.valueToTree(
           new NewFileCommittedMessageBody(filename, offset, recordCount));
 
-        this.producer.send(new ProducerRecord<>(this.topic, this.partition, null, value));
+        this.producer.send(new ProducerRecord<>(this.topic, this.partition, key, value));
       }
     }
   }
