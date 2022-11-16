@@ -28,10 +28,9 @@ public class S3ContinuumConfigValues {
   public int partition;
   public String bootstrapServers;
   public String schemaRegistryURL;
-  public String valueConverter;
 
   public boolean isConfigured() {
-    if (!stringIsNullOrEmpty(this.topic) && !stringIsNullOrEmpty(this.bootstrapServers)) {
+    if (!stringIsNullOrEmpty(this.topic) || !stringIsNullOrEmpty(this.bootstrapServers)) {
       ArrayList<String> missingValues = new ArrayList<String>();
 
       if (stringIsNullOrEmpty(this.topic)) {
@@ -39,14 +38,6 @@ public class S3ContinuumConfigValues {
       }
       if (stringIsNullOrEmpty(this.bootstrapServers)) {
         missingValues.add(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
-      }
-      if (stringIsNullOrEmpty(this.valueConverter)) {
-        missingValues.add(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
-      }
-      if (stringIsNullOrEmpty(this.schemaRegistryURL)
-              && !stringIsNullOrEmpty(this.valueConverter)
-              && this.valueConverter.toLowerCase().contains("avro")) {
-        missingValues.add(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
       }
 
       if (missingValues.size() > 0) {

@@ -42,12 +42,7 @@ public class S3ContinuumConfigTest {
   }
 
   private void configureWithAvroConverter() {
-    this.localProps.put(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryURL);
-    this.localProps.put(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG, avroConverter);
-  }
-
-  private void configureWithJsonConverter() {
-    this.localProps.put(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG, jsonConverter);
+    this.localProps.put(S3ContinuumConfig.CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryURL);
   }
 
   @Before
@@ -70,13 +65,12 @@ public class S3ContinuumConfigTest {
     assertEquals(this.topic, values.topic);
     assertEquals(this.bootstrapServers, values.bootstrapServers);
     assertEquals(this.schemaRegistryURL, values.schemaRegistryURL);
-    assertEquals(this.avroConverter, values.valueConverter);
     assertTrue(values.isConfigured());
   }
 
   @Test
   public void parseConfigValues_ValidJsonValues_Configured() {
-    configureWithJsonConverter();
+    // The Continuum uses JSON by default, so there's no extra configuration needed here.
 
     S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
     S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
@@ -84,30 +78,7 @@ public class S3ContinuumConfigTest {
     assertEquals(this.topic, values.topic);
     assertEquals(this.partition, values.partition);
     assertEquals(this.bootstrapServers, values.bootstrapServers);
-    assertEquals(this.jsonConverter, values.valueConverter);
     assertTrue(values.isConfigured());
-  }
-
-  @Test
-  public void parseConfigValues_MissingSchemaRegistryUrl_NotConfigured() {
-    configureWithAvroConverter();
-    localProps.remove(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
-
-    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
-    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
-
-    assertFalse(values.isConfigured());
-  }
-
-  @Test
-  public void parseConfigValues_MissingConverter_NotConfigured() {
-    configureWithAvroConverter();
-    localProps.remove(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
-
-    S3ContinuumConfig config = new S3ContinuumConfig(this.localProps);
-    S3ContinuumConfigValues values = S3ContinuumConfig.parseConfigValues(config);
-
-    assertFalse(values.isConfigured());
   }
 
   @Test

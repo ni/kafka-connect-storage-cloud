@@ -46,21 +46,14 @@ public class S3ContinuumConfig extends AbstractConfig {
   private static final String CONTINUUM_BOOTSTRAP_SERVERS_DISPLAY =
           "Continuum Bootstrap Servers";
 
-  public static final String CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG =
-          "continuum.schema.registry.url";
-  private static final String CONTINUUM_SCHEMA_REGISTRY_URL_DOC =
-          "The schema registry service URL. Required if using Avro as the value converter.";
-  private static final String CONTINUUM_SCHEMA_REGISTRY_URL_DISPLAY =
-          "Continuum Schema Registry";
-
-  public static final String CONTINUUM_VALUE_CONVERTER_CONFIG =
-          "continuum.value.converter";
-  private static final String CONTINUUM_VALUE_CONVERTER_DOC =
-          "The class to use to serialize the values written to the Kafka notification topic. "
-           + "Supported values include io.confluent.kafka.serializers.KafkaAvroSerializer for AVRO,"
-           + " and org.apache.kafka.connect.json.JsonSerializer for JSON";
-  private static final String CONTINUUM_VALUE_CONVERTER_DISPLAY =
-          "Continuum Value Serializer";
+  public static final String CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_CONFIG =
+          "continuum.avro.schema.registry.url";
+  private static final String CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_DOC =
+          "The schema registry service URL. Setting this will cause the Continuum to publish "
+                  + "messages with values serialized using Avro. JSON will be used "
+                  + "if this is not set.";
+  private static final String CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_DISPLAY =
+          "Continuum Avro Schema Registry";
 
   public S3ContinuumConfig(Map<?, ?> props) {
     super(continuumDefs(new ConfigDef()), props);
@@ -77,8 +70,7 @@ public class S3ContinuumConfig extends AbstractConfig {
     values.bootstrapServers = config
             .getString(S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG);
     values.schemaRegistryURL = config
-            .getString(S3ContinuumConfig.CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG);
-    values.valueConverter = config.getString(S3ContinuumConfig.CONTINUUM_VALUE_CONVERTER_CONFIG);
+            .getString(S3ContinuumConfig.CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_CONFIG);
 
     return values;
   }
@@ -130,24 +122,15 @@ public class S3ContinuumConfig extends AbstractConfig {
                     ConfigDef.Width.MEDIUM,
                     CONTINUUM_BOOTSTRAP_SERVERS_DISPLAY
             ).define(
-                    CONTINUUM_SCHEMA_REGISTRY_URL_CONFIG,
+                    CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_CONFIG,
                     ConfigDef.Type.STRING,
                     "",
                     ConfigDef.Importance.LOW,
-                    CONTINUUM_SCHEMA_REGISTRY_URL_DOC,
+                    CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_DOC,
                     CONTINUUM_GROUP,
                     4,
                     ConfigDef.Width.MEDIUM,
-                    CONTINUUM_SCHEMA_REGISTRY_URL_DISPLAY
-            ).define(
-                    CONTINUUM_VALUE_CONVERTER_CONFIG,
-                    ConfigDef.Type.STRING,
-                    "",
-                    ConfigDef.Importance.HIGH,
-                    CONTINUUM_VALUE_CONVERTER_DOC,
-                    CONTINUUM_GROUP,
-                    5,
-                    ConfigDef.Width.MEDIUM,
-                    CONTINUUM_VALUE_CONVERTER_DISPLAY);
+                    CONTINUUM_AVRO_SCHEMA_REGISTRY_URL_DISPLAY
+            );
   }
 }

@@ -39,26 +39,39 @@ import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_
 public class S3Continuum {
   private static final Logger log = LoggerFactory.getLogger(S3Continuum.class);
 
-  private Producer<Object, Object> producer;
+  private Producer<String, Object> producer;
   private String topic;
   private int partition;
   private ObjectMapper mapper;
   private Schema valueSchema;
 
+  private final String avroValueConverterClass
+          = io.confluent.kafka.serializers.KafkaAvroSerializer.class.getName();
+  private final String jsonValueConverterClass
+          = org.apache.kafka.connect.json.JsonSerializer.class.getName();
+
   public S3Continuum(AbstractConfig config) {
     final S3ContinuumConfigValues continuumConfig = S3ContinuumConfig.parseConfigValues(config);
 
     if (continuumConfig.isConfigured()) {
+      boolean usingAvro = continuumConfig.schemaRegistryURL != "";
+      String valueConverter;
+      if (usingAvro) {
+        valueConverter = avroValueConverterClass;
+      } else {
+        valueConverter = jsonValueConverterClass;
+      }
+
       Properties producerProperties = new Properties();
       producerProperties.put(BOOTSTRAP_SERVERS_CONFIG, continuumConfig.bootstrapServers);
       producerProperties.put(SCHEMA_REGISTRY_URL_CONFIG, continuumConfig.schemaRegistryURL);
       producerProperties.put(KEY_SERIALIZER_CLASS_CONFIG,
               org.apache.kafka.common.serialization.StringSerializer.class);
       producerProperties.put(VALUE_SERIALIZER_CLASS_CONFIG,
-              continuumConfig.valueConverter);
+              valueConverter);
       this.producer = new KafkaProducer<>(producerProperties);
 
-      if (continuumConfig.schemaRegistryURL != "") {
+      if (usingAvro) {
         String s3NotificationSchema =
                 "{\"type\":\"record\","
                         + "\"name\":\"" + "new_file_ingested_schema" + "_continuum\","
