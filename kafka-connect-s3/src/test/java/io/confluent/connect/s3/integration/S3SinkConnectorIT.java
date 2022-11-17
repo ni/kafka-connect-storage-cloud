@@ -22,7 +22,10 @@ import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_HEADERS_
 import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_KEYS_CONFIG;
 import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_ACCESS_KEY_ID_CONFIG;
 import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
-import static io.confluent.connect.s3.continuum.S3ContinuumConfig.*;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG;
+
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FLUSH_SIZE_CONFIG;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FORMAT_CLASS_CONFIG;
 import static org.apache.kafka.connect.runtime.ConnectorConfig.CONNECTOR_CLASS_CONFIG;
@@ -201,72 +204,91 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   public void testBasicRecordsWrittenAvro() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
-    testBasicRecordsWritten(AVRO_EXTENSION, false, true);
+    testBasicRecordsWritten(AVRO_EXTENSION, false);
   }
 
   @Test
   public void testBasicRecordsWrittenParquet() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testBasicRecordsWritten(PARQUET_EXTENSION, false, true);
+    testBasicRecordsWritten(PARQUET_EXTENSION, false);
   }
 
   @Test
   public void testBasicRecordsWrittenJson() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, JsonFormat.class.getName());
-    testBasicRecordsWritten(JSON_EXTENSION, false, true);
+    testBasicRecordsWritten(JSON_EXTENSION, false);
   }
 
   @Test
   public void testFilesWrittenToBucketAvroWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
-    //we don't verify the Continuum offsets because this test writes two sets of files,
-    //which would complicate the offset verification logic.
-    testBasicRecordsWritten(AVRO_EXTENSION, true, false);
+    testBasicRecordsWritten(AVRO_EXTENSION, true);
   }
 
   @Test
   public void testFilesWrittenToBucketParquetWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    //we don't verify the Continuum offsets because this test writes two sets of files,
-    //which would complicate the offset verification logic.
-    testBasicRecordsWritten(PARQUET_EXTENSION, true, false);
+    testBasicRecordsWritten(PARQUET_EXTENSION, true);
   }
 
   @Test
   public void testFilesWrittenToBucketJsonWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, JsonFormat.class.getName());
-    //we don't verify the Continuum offsets because this test writes two sets of files,
-    //which would complicate the offset verification logic.
-    testBasicRecordsWritten(JSON_EXTENSION, true, false);
+    testBasicRecordsWritten(JSON_EXTENSION, true);
   }
 
   @Test
-  public void testContinuumNotificationsPublishedToCorrectPartition() throws Throwable {
+  public void testContinuumNotificationsPublishedToDefaultPartition() throws Throwable {
     //add test specific props
+    setupContinuumProperties();
+    //the formatter isn't relevant here, but we'll arbitrarily use parquet
+    props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
+    testRecordsWritten(PARQUET_EXTENSION, false, true);
+  }
+
+  @Test
+  public void testContinuumNotificationsPublishedToConfiguredPartition() throws Throwable {
+    //add test specific props
+    setupContinuumProperties();
     CONTINUUM_TOPIC_PARTITION = 5;
     props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
     //the formatter isn't relevant here, but we'll arbitrarily use parquet
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testBasicRecordsWritten(PARQUET_EXTENSION, false, true);
+    testRecordsWritten(PARQUET_EXTENSION, false, true);
+  }
+
+    /**
+   * Test that the expected records are written for a given file extension
+   * Optionally, test that topics which have "*.{expectedFileExtension}*" in them are processed
+   * and written.
+   * @param expectedFileExtension The file extension to test against
+   * @param addExtensionInTopic Add a topic to the test which contains the extension
+   * @throws Throwable
+   */
+  private void testBasicRecordsWritten(String expectedFileExtension,
+                                       boolean addExtensionInTopic)
+          throws Throwable {
+    testRecordsWritten(expectedFileExtension, addExtensionInTopic, false);
   }
 
   /**
    * Test that the expected records are written for a given file extension
    * Optionally, test that topics which have "*.{expectedFileExtension}*" in them are processed
-   * and written.
+   * and written. Optionally, test that Continuum notifications are published to CONTINUUM_TOPIC.
    * @param expectedFileExtension The file extension to test against
-   * @param addExtensionInTopic Add a topic to to the test which contains the extension
+   * @param addExtensionInTopic Add a topic to the test which contains the extension
+   * @param verifyContinuumMessages Whether the messages that the Continuum publishes should be verified
    * @throws Throwable
    */
-  private void testBasicRecordsWritten(
+  private void testRecordsWritten(
           String expectedFileExtension,
           boolean addExtensionInTopic,
-          boolean verifyContinuumNotificationOffsets
+          boolean verifyContinuumMessages
   ) throws Throwable {
     final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
 
@@ -323,21 +345,21 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
 
-    ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount,
-            1000,
-            CONTINUUM_TOPIC_NAME);
-    assertContinuumMessagesAsExpected(newFileWrittenRecords,
-            expectedTopicFilenames,
-            FLUSH_SIZE_STANDARD,
-            CONTINUUM_TOPIC_PARTITION,
-            verifyContinuumNotificationOffsets);
+    if (verifyContinuumMessages) {
+      ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount,
+              1000,
+              CONTINUUM_TOPIC_NAME);
+      assertContinuumMessagesAsExpected(newFileWrittenRecords,
+              expectedTopicFilenames,
+              FLUSH_SIZE_STANDARD,
+              CONTINUUM_TOPIC_PARTITION);
+    }
   }
 
   private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages,
                                                  Set<String> expectedFileNames,
                                                  long expectedRecordsPerFile,
-                                                 int expectedPartition,
-                                                 boolean verifyOffsets)
+                                                 int expectedPartition)
           throws JsonProcessingException {
     // There should be one message per file
     assertEquals(expectedFileNames.size(), continuumMessages.count());
@@ -353,10 +375,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
         assertTrue(expectedFileNamesCopy.contains(message.filename));
         expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
 
-        if (verifyOffsets) {
-          assertEquals(offset, message.offset);
-          offset += expectedRecordsPerFile;
-        }
+        assertEquals(offset, message.offset);
+        offset += expectedRecordsPerFile;
 
         assertEquals(expectedRecordsPerFile, message.recordCount);
 
@@ -792,11 +812,13 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // converters
     props.put(KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-    props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
-    props.put(CONTINUUM_TOPIC_CONFIG, CONTINUUM_TOPIC_NAME);
-    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
     // aws credential if exists
     props.putAll(getAWSCredentialFromPath());
+  }
+
+  private void setupContinuumProperties() {
+    props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
+    props.put(CONTINUUM_TOPIC_CONFIG, CONTINUUM_TOPIC_NAME);
   }
 
   private static Map<String, String> getAWSCredentialFromPath() {

@@ -30,8 +30,6 @@ public class S3ContinuumConfigTest {
   private final String topic = "test-topic";
   private final String bootstrapServers = "localhost:9092";
   private final String schemaRegistryURL = "http://localhost:8081";
-  private final String avroConverter = "io.confluent.connect.avro.AvroConverter";
-  private final String jsonConverter = "org.apache.kafka.connect.json.JsonConverter";
   private final int partition = 0;
 
   private Map<String, String> createProps() {
