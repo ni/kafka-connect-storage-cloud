@@ -1,5 +1,6 @@
 /*
  * Copyright 2018 Confluent Inc.
+ * Modified by National Instruments Inc.
  *
  * Licensed under the Confluent Community License (the "License"); you may not use
  * this file except in compliance with the License.  You may obtain a copy of the
@@ -610,7 +611,7 @@ public class TopicPartitionWriterTest extends TestWithMockedS3 {
     Time systemTime = EasyMock.createMock(SystemTime.class);
 
     TopicPartitionWriter topicPartitionWriter = new TopicPartitionWriter(
-        TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, systemTime, null);
+        TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, systemTime, null, null);
 
     // Freeze clock passed into topicPartitionWriter, so we know what time it will use for "now"
     long freezeTime = 3599000L;
@@ -684,7 +685,7 @@ public class TopicPartitionWriterTest extends TestWithMockedS3 {
 
     TopicPartitionWriter topicPartitionWriter = new TopicPartitionWriter(
         TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, time,
-        null);
+        null, null);
 
     // sleep for 11 minutes after startup
     time.sleep(TimeUnit.MINUTES.toMillis(11));
@@ -748,7 +749,7 @@ public class TopicPartitionWriterTest extends TestWithMockedS3 {
 
     TopicPartitionWriter topicPartitionWriter = new TopicPartitionWriter(
         TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, time,
-        null);
+        null, null);
 
     // sleep for 11 minutes after startup
     time.sleep(TimeUnit.MINUTES.toMillis(11));
@@ -842,7 +843,7 @@ public class TopicPartitionWriterTest extends TestWithMockedS3 {
     // Bring the clock to present.
     time.sleep(SYSTEM.milliseconds());
     TopicPartitionWriter topicPartitionWriter = new TopicPartitionWriter(
-        TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, time, null);
+        TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, time, null, null);
 
     String key = "key";
     Schema schema = createSchema();
@@ -920,7 +921,7 @@ public class TopicPartitionWriterTest extends TestWithMockedS3 {
     // Bring the clock to present.
     time.sleep(SYSTEM.milliseconds());
     TopicPartitionWriter topicPartitionWriter = new TopicPartitionWriter(
-        TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, time, null);
+        TOPIC_PARTITION, storage, writerProvider, partitioner, connectorConfig, context, time, null, null);
 
     String key = "key";
     Schema schema = createSchema();

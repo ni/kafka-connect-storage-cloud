@@ -1,5 +1,6 @@
 /*
  * Copyright 2018 Confluent Inc.
+ * Modified by National Instruments Inc.
  *
  * Licensed under the Confluent Community License (the "License"); you may not use
  * this file except in compliance with the License.  You may obtain a copy of the
@@ -23,6 +24,10 @@ import static io.confluent.connect.s3.S3SinkConnectorConfig.STORE_KAFKA_KEYS_CON
 import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_ACCESS_KEY_ID_CONFIG;
 import static io.confluent.connect.s3.S3SinkConnectorConfig.AWS_SECRET_ACCESS_KEY_CONFIG;
 import static io.confluent.connect.s3.S3SinkConnectorConfig.TOMBSTONE_ENCODED_PARTITION;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.CONTINUUM_BOOTSTRAP_SERVERS_CONFIG;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.CONTINUUM_TOPIC_CONFIG;
+import static io.confluent.connect.s3.continuum.S3ContinuumConfig.CONTINUUM_TOPIC_PARTITION_CONFIG;
+
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FLUSH_SIZE_CONFIG;
 import static io.confluent.connect.storage.StorageSinkConnectorConfig.FORMAT_CLASS_CONFIG;
 import static org.apache.kafka.connect.runtime.ConnectorConfig.CONNECTOR_CLASS_CONFIG;
@@ -39,10 +44,12 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 
+import io.confluent.connect.s3.continuum.NewFileCommittedMessageBody;
 import io.confluent.connect.s3.S3SinkConnector;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
 import io.confluent.connect.s3.S3SinkConnectorConfig.OutputWriteBehavior;
@@ -62,6 +69,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -131,15 +139,18 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   // DLQ Tests
   private static final String DLQ_TOPIC_CONFIG = "errors.deadletterqueue.topic.name";
   private static final String DLQ_TOPIC_NAME = "DLQ-topic";
+  private static final String CONTINUUM_TOPIC_NAME = "new-file-written-topic";
 
   private static final String TOMBSTONE_PARTITION = "TOMBSTONE_PARTITION";
 
   private static final List<String> KAFKA_TOPICS = Collections.singletonList(DEFAULT_TEST_TOPIC_NAME);
+  private static final List<String> KAFKA_TOPICS = Arrays.asList(DEFAULT_TEST_TOPIC_NAME);
   private static final long CONSUME_MAX_DURATION_MS = TimeUnit.SECONDS.toMillis(10);
   private static final int NUM_RECORDS_INSERT = 30;
   private static final int FLUSH_SIZE_STANDARD = 3;
   private static final int TOPIC_PARTITION = 0;
   private static final int DEFAULT_OFFSET = 0;
+  private int CONTINUUM_TOPIC_PARTITION = 0;
 
   private static final Map<String, Function<String, List<JsonNode>>> contentGetters =
       ImmutableMap.of(
@@ -182,6 +193,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(S3_BUCKET_CONFIG, TEST_BUCKET_NAME);
     // create topics in Kafka
     KAFKA_TOPICS.forEach(topic -> connect.kafka().createTopic(topic, 1));
+    connect.kafka().createTopic(CONTINUUM_TOPIC_NAME, 16);
   }
 
   @After
@@ -247,17 +259,53 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     testBasicRecordsWritten(JSON_EXTENSION, true);
   }
 
-  /**
+  @Test
+  public void testContinuumNotificationsPublishedToDefaultPartition() throws Throwable {
+    //add test specific props
+    setupContinuumProperties();
+    //the formatter isn't relevant here, but we'll arbitrarily use parquet
+    props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
+    testRecordsWritten(PARQUET_EXTENSION, false, true);
+  }
+
+  @Test
+  public void testContinuumNotificationsPublishedToConfiguredPartition() throws Throwable {
+    //add test specific props
+    setupContinuumProperties();
+    CONTINUUM_TOPIC_PARTITION = 5;
+    props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
+    //the formatter isn't relevant here, but we'll arbitrarily use parquet
+    props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
+    testRecordsWritten(PARQUET_EXTENSION, false, true);
+  }
+
+    /**
    * Test that the expected records are written for a given file extension
    * Optionally, test that topics which have "*.{expectedFileExtension}*" in them are processed
    * and written.
    * @param expectedFileExtension The file extension to test against
-   * @param addExtensionInTopic Add a topic to to the test which contains the extension
+   * @param addExtensionInTopic Add a topic to the test which contains the extension
    * @throws Throwable
    */
-  private void testBasicRecordsWritten(
+  private void testBasicRecordsWritten(String expectedFileExtension,
+                                       boolean addExtensionInTopic)
+          throws Throwable {
+    testRecordsWritten(expectedFileExtension, addExtensionInTopic, false);
+  }
+
+  /**
+   * Test that the expected records are written for a given file extension
+   * Optionally, test that topics which have "*.{expectedFileExtension}*" in them are processed
+   * and written. Optionally, test that Continuum notifications are published to CONTINUUM_TOPIC.
+   * @param expectedFileExtension The file extension to test against
+   * @param addExtensionInTopic Add a topic to the test which contains the extension
+   * @param verifyContinuumMessages Whether the messages that the Continuum publishes should be verified
+   * @throws Throwable
+   */
+  private void testRecordsWritten(
           String expectedFileExtension,
-          boolean addExtensionInTopic
+          boolean addExtensionInTopic,
+          boolean verifyContinuumMessages
   ) throws Throwable {
     final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
 
@@ -313,6 +361,48 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     // Now check that all files created by the sink have the contents that were sent
     // to the producer (they're all the same content)
     assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, recordValueStruct));
+
+    if (verifyContinuumMessages) {
+      ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount,
+              1000,
+              CONTINUUM_TOPIC_NAME);
+      assertContinuumMessagesAsExpected(newFileWrittenRecords,
+              expectedTopicFilenames,
+              FLUSH_SIZE_STANDARD,
+              CONTINUUM_TOPIC_PARTITION);
+    }
+  }
+
+  private void assertContinuumMessagesAsExpected(ConsumerRecords<byte[], byte[]> continuumMessages,
+                                                 Set<String> expectedFileNames,
+                                                 long expectedRecordsPerFile,
+                                                 int expectedPartition)
+          throws JsonProcessingException {
+    // There should be one message per file
+    assertEquals(expectedFileNames.size(), continuumMessages.count());
+
+    HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
+    ObjectMapper mapper = new ObjectMapper();
+    long offset = 0;
+    for (ConsumerRecord<byte[], byte[]> record : continuumMessages) {
+      String value = new String(record.value());
+      try {
+        NewFileCommittedMessageBody message = mapper.readValue(value, NewFileCommittedMessageBody.class);
+
+        assertTrue(expectedFileNamesCopy.contains(message.filename));
+        expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
+
+        assertEquals(offset, message.offset);
+        offset += expectedRecordsPerFile;
+
+        assertEquals(expectedRecordsPerFile, message.recordCount);
+
+        assertEquals(record.partition(), expectedPartition);
+      } catch (JsonProcessingException e) {
+        log.error("Error parsing JSON: {}", e);
+        throw e;
+      }
+    }
   }
 
   private void testTombstoneRecordsWritten(
@@ -842,6 +932,11 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
     // aws credential if exists
     props.putAll(getAWSCredentialFromPath());
+  }
+
+  private void setupContinuumProperties() {
+    props.put(CONTINUUM_BOOTSTRAP_SERVERS_CONFIG, connect.kafka().bootstrapServers());
+    props.put(CONTINUUM_TOPIC_CONFIG, CONTINUUM_TOPIC_NAME);
   }
 
   private static Map<String, String> getAWSCredentialFromPath() {
