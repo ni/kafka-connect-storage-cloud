@@ -1,5 +1,6 @@
 /*
  * Copyright 2018 Confluent Inc.
+ * Modified by National Instruments Inc.
  *
  * Licensed under the Confluent Community License (the "License"); you may not use
  * this file except in compliance with the License.  You may obtain a copy of the
@@ -21,6 +22,7 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.SSEAlgorithm;
+import io.confluent.connect.s3.continuum.S3ContinuumConfig;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -714,7 +716,7 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
       );
 
     }
-    return configDef;
+    return S3ContinuumConfig.continuumDefs(configDef);
   }
 
   public S3SinkConnectorConfig(Map<String, String> props) {

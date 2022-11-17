@@ -1,5 +1,6 @@
 /*
  * Copyright 2018 Confluent Inc.
+ * Modified by National Instruments Inc.
  *
  * Licensed under the Confluent Community License (the "License"); you may not use
  * this file except in compliance with the License.  You may obtain a copy of the
@@ -16,6 +17,7 @@
 package io.confluent.connect.s3;
 
 import com.amazonaws.SdkClientException;
+import io.confluent.connect.s3.continuum.S3Continuum;
 import io.confluent.connect.s3.storage.S3Storage;
 import io.confluent.connect.s3.util.RetryUtil;
 import io.confluent.connect.storage.errors.PartitionException;
@@ -99,6 +101,7 @@ public class TopicPartitionWriter {
   private final S3SinkConnectorConfig connectorConfig;
   private static final Time SYSTEM_TIME = new SystemTime();
   private ErrantRecordReporter reporter;
+  private S3Continuum continuumProducer;
 
   public TopicPartitionWriter(TopicPartition tp,
                               S3Storage storage,
@@ -107,7 +110,15 @@ public class TopicPartitionWriter {
                               S3SinkConnectorConfig connectorConfig,
                               SinkTaskContext context,
                               ErrantRecordReporter reporter) {
-    this(tp, storage, writerProvider, partitioner, connectorConfig, context, SYSTEM_TIME, reporter);
+    this(tp,
+            storage,
+            writerProvider,
+            partitioner,
+            connectorConfig,
+            context,
+            SYSTEM_TIME,
+            reporter,
+            null);
   }
 
   // Visible for testing
@@ -118,8 +129,8 @@ public class TopicPartitionWriter {
                        S3SinkConnectorConfig connectorConfig,
                        SinkTaskContext context,
                        Time time,
-                       ErrantRecordReporter reporter
-  ) {
+                       ErrantRecordReporter reporter,
+                       S3Continuum continuumProducer) {
     this.connectorConfig = connectorConfig;
     this.time = time;
     this.tp = tp;
@@ -128,6 +139,7 @@ public class TopicPartitionWriter {
     this.writerProvider = writerProvider;
     this.partitioner = partitioner;
     this.reporter = reporter;
+    this.continuumProducer = continuumProducer;
     this.timestampExtractor = partitioner instanceof TimeBasedPartitioner
                                   ? ((TimeBasedPartitioner) partitioner).getTimestampExtractor()
                                   : null;
@@ -637,6 +649,17 @@ public class TopicPartitionWriter {
       RecordWriter writer = writers.get(encodedPartition);
       // Commits the file and closes the underlying output stream.
       writer.commit();
+
+      try {
+        String filename = getCommitFilename(encodedPartition);
+        continuumProducer.produce(
+                filename,
+                filename,
+                startOffsets.get(encodedPartition),
+                recordCounts.get(encodedPartition));
+      } catch (Exception e) {
+        log.error("Error publishing Continuum notification to Kafka: {}", e.getMessage());
+      }
       writers.remove(encodedPartition);
       log.debug("Removed writer for '{}'", encodedPartition);
     }

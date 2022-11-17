@@ -1,5 +1,6 @@
 /*
  * Copyright 2018 Confluent Inc.
+ * Modified by National Instruments Inc.
  *
  * Licensed under the Confluent Community License (the "License"); you may not use
  * this file except in compliance with the License.  You may obtain a copy of the
@@ -17,6 +18,7 @@ package io.confluent.connect.s3;
 
 import com.amazonaws.AmazonClientException;
 import io.confluent.connect.s3.S3SinkConnectorConfig.IgnoreOrFailBehavior;
+import io.confluent.connect.s3.continuum.S3Continuum;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -62,6 +64,7 @@ public class S3SinkTask extends SinkTask {
   private RecordWriterProvider<S3SinkConnectorConfig> writerProvider;
   private final Time time;
   private ErrantRecordReporter reporter;
+  private S3Continuum continuumProducer;
 
   /**
    * No-arg constructor. Used by Connect framework.
@@ -98,7 +101,9 @@ public class S3SinkTask extends SinkTask {
       connectorConfig = new S3SinkConnectorConfig(props);
       url = connectorConfig.getString(StorageCommonConfig.STORE_URL_CONFIG);
       timeoutMs = connectorConfig.getLong(S3SinkConnectorConfig.RETRY_BACKOFF_CONFIG);
-
+      if (continuumProducer == null) {
+        continuumProducer = new S3Continuum(connectorConfig);
+      }
       @SuppressWarnings("unchecked")
       Class<? extends S3Storage> storageClass =
           (Class<? extends S3Storage>)
@@ -303,6 +308,9 @@ public class S3SinkTask extends SinkTask {
       if (storage != null) {
         storage.close();
       }
+      if (continuumProducer != null) {
+        continuumProducer.stop();
+      }
     } catch (Exception e) {
       throw new ConnectException(e);
     }
@@ -322,7 +330,8 @@ public class S3SinkTask extends SinkTask {
         connectorConfig,
         context,
         time,
-        reporter
+        reporter,
+        continuumProducer
     );
   }
 }
