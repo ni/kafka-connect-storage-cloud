@@ -6,11 +6,13 @@ This repo is based off of the `v10.2.2` tag from upstream.
 
 - Whenever a new file is committed to S3, the sink publishes information about
   that file to a Kafka topic:
+
   - Filename
-  - Number of rows in the file
-  - startOffset of the file
-  - The integration tests assume that they are connecting to an S3 bucket in the
-    `us-east-1` region
+  - The number of rows in the file
+  - The start and end offsets of the file
+
+- The integration tests assume that they are connecting to an S3 bucket in the
+  `us-east-1` region
 
 ---
 
