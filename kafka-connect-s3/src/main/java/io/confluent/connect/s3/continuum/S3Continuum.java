@@ -100,7 +100,11 @@ public class S3Continuum {
     return this.producer != null;
   }
 
-  public void produce(String key, String filename, long startOffset, long endOffset, long recordCount) {
+  public void produce(String key,
+                      String filename,
+                      long startOffset, 
+                      long endOffset,
+                      long recordCount) {
     if (isActive()) {
       boolean usingAvro = this.valueSchema != null;
       if (usingAvro) {

@@ -36,7 +36,10 @@ public class NewFileCommittedMessageBody {
   public NewFileCommittedMessageBody() {
   }
 
-  public NewFileCommittedMessageBody(String filename, long startOffset, long endOffset, long recordCount) {
+  public NewFileCommittedMessageBody(String filename,
+                                     long startOffset,
+                                     long endOffset,
+                                     long recordCount) {
     this.filename = filename;
     this.startOffset = startOffset;
     this.endOffset = endOffset;
