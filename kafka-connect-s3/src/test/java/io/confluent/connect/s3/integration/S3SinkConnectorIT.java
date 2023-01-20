@@ -366,7 +366,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
 
     HashSet<String> expectedFileNamesCopy = new HashSet<>(expectedFileNames);
     ObjectMapper mapper = new ObjectMapper();
-    long offset = 0;
+    long startOffset = 0;
     for (ConsumerRecord<byte[], byte[]> record : continuumMessages) {
       String value = new String(record.value());
       try {
@@ -375,8 +375,9 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
         assertTrue(expectedFileNamesCopy.contains(message.filename));
         expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
 
-        assertEquals(offset, message.offset);
-        offset += expectedRecordsPerFile;
+        assertEquals(startOffset, message.startOffset);
+        assertTrue(message.endOffset >= (startOffset + message.recordCount - 1));
+        startOffset += expectedRecordsPerFile;
 
         assertEquals(expectedRecordsPerFile, message.recordCount);
 

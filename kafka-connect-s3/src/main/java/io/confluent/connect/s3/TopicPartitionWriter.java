@@ -656,6 +656,7 @@ public class TopicPartitionWriter {
                 filename,
                 filename,
                 startOffsets.get(encodedPartition),
+                endOffsets.get(encodedPartition),
                 recordCounts.get(encodedPartition));
       } catch (Exception e) {
         log.error("Error publishing Continuum notification to Kafka: {}", e.getMessage());

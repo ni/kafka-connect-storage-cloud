@@ -100,19 +100,20 @@ public class S3Continuum {
     return this.producer != null;
   }
 
-  public void produce(String key, String filename, long offset, long recordCount) {
+  public void produce(String key, String filename, long startOffset, long endOffset, long recordCount) {
     if (isActive()) {
       boolean usingAvro = this.valueSchema != null;
       if (usingAvro) {
         GenericRecord value = new GenericData.Record(this.valueSchema);
         value.put("filename", filename);
-        value.put("offset", offset);
+        value.put("startOffset", startOffset);
+        value.put("endOffset", endOffset);
         value.put("recordCount", recordCount);
 
         this.producer.send(new ProducerRecord<>(this.topic, this.partition, key, value));
       } else {
         JsonNode value = this.mapper.valueToTree(
-          new NewFileCommittedMessageBody(filename, offset, recordCount));
+          new NewFileCommittedMessageBody(filename, startOffset, endOffset, recordCount));
 
         this.producer.send(new ProducerRecord<>(this.topic, this.partition, key, value));
       }
