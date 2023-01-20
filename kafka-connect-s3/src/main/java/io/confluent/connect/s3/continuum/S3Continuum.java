@@ -102,7 +102,7 @@ public class S3Continuum {
 
   public void produce(String key,
                       String filename,
-                      long startOffset, 
+                      long startOffset,
                       long endOffset,
                       long recordCount) {
     if (isActive()) {

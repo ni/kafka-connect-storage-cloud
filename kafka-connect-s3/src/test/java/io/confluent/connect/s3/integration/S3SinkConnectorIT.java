@@ -376,6 +376,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
         expectedFileNamesCopy.remove(message.filename); // ensures filenames are distinct
 
         assertEquals(startOffset, message.startOffset);
+        // This is just a loose >= check because it's possible for numbers to get
+        // skipped between startOffset and endOffset
         assertTrue(message.endOffset >= (startOffset + message.recordCount - 1));
         startOffset += expectedRecordsPerFile;
 
