@@ -72,13 +72,19 @@ public class S3Continuum {
       this.producer = new KafkaProducer<>(producerProperties);
 
       if (usingAvro) {
+        // We provide defaults for startOffset and endOffset
+        // for compatibility with the original version of the schema
+        // which only included a field named "offset" representing
+        // the startOffset. The continuum always sets startOffset
+        // and endOffset, so the defaults are unused.
         String s3NotificationSchema =
                 "{\"type\":\"record\","
                         + "\"name\":\"new_file\","
                         + "\"namespace\":\"io.confluent.connect.s3.continuum\","
                         + "\"fields\":["
                         + "{\"name\":\"filename\",\"type\":\"string\"},"
-                        + "{\"name\":\"offset\",\"type\":\"long\"},"
+                        + "{\"name\":\"startOffset\",\"type\":\"long\", \"default\": 0},"
+                        + "{\"name\":\"endOffset\",\"type\":\"long\", \"default\": 0},"
                         + "{\"name\":\"recordCount\",\"type\":\"long\"}"
                         + "]}";
         Schema.Parser parser = new Schema.Parser();
