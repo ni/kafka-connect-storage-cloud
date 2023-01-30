@@ -72,13 +72,19 @@ public class S3Continuum {
       this.producer = new KafkaProducer<>(producerProperties);
 
       if (usingAvro) {
+        // We provide defaults for startOffset and endOffset
+        // for compatibility with the original version of the schema
+        // which only included a field named "offset" representing
+        // the startOffset. The continuum always sets startOffset
+        // and endOffset, so the defaults are unused.
         String s3NotificationSchema =
                 "{\"type\":\"record\","
                         + "\"name\":\"new_file\","
                         + "\"namespace\":\"io.confluent.connect.s3.continuum\","
                         + "\"fields\":["
                         + "{\"name\":\"filename\",\"type\":\"string\"},"
-                        + "{\"name\":\"offset\",\"type\":\"long\"},"
+                        + "{\"name\":\"startOffset\",\"type\":\"long\", \"default\": -1},"
+                        + "{\"name\":\"endOffset\",\"type\":\"long\", \"default\": -1},"
                         + "{\"name\":\"recordCount\",\"type\":\"long\"}"
                         + "]}";
         Schema.Parser parser = new Schema.Parser();
@@ -100,19 +106,24 @@ public class S3Continuum {
     return this.producer != null;
   }
 
-  public void produce(String key, String filename, long offset, long recordCount) {
+  public void produce(String key,
+                      String filename,
+                      long startOffset,
+                      long endOffset,
+                      long recordCount) {
     if (isActive()) {
       boolean usingAvro = this.valueSchema != null;
       if (usingAvro) {
         GenericRecord value = new GenericData.Record(this.valueSchema);
         value.put("filename", filename);
-        value.put("offset", offset);
+        value.put("startOffset", startOffset);
+        value.put("endOffset", endOffset);
         value.put("recordCount", recordCount);
 
         this.producer.send(new ProducerRecord<>(this.topic, this.partition, key, value));
       } else {
         JsonNode value = this.mapper.valueToTree(
-          new NewFileCommittedMessageBody(filename, offset, recordCount));
+          new NewFileCommittedMessageBody(filename, startOffset, endOffset, recordCount));
 
         this.producer.send(new ProducerRecord<>(this.topic, this.partition, key, value));
       }

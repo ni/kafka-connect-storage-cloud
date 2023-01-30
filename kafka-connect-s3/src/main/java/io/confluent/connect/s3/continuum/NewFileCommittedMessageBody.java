@@ -24,8 +24,11 @@ public class NewFileCommittedMessageBody {
   @JsonProperty("filename")
   public String filename;
 
-  @JsonProperty("offset")
-  public long offset;
+  @JsonProperty("startOffset")
+  public long startOffset;
+
+  @JsonProperty("endOffset")
+  public long endOffset;
 
   @JsonProperty("recordCount")
   public long recordCount;
@@ -33,9 +36,13 @@ public class NewFileCommittedMessageBody {
   public NewFileCommittedMessageBody() {
   }
 
-  public NewFileCommittedMessageBody(String filename, long offset, long recordCount) {
+  public NewFileCommittedMessageBody(String filename,
+                                     long startOffset,
+                                     long endOffset,
+                                     long recordCount) {
     this.filename = filename;
-    this.offset = offset;
+    this.startOffset = startOffset;
+    this.endOffset = endOffset;
     this.recordCount = recordCount;
   }
 }
