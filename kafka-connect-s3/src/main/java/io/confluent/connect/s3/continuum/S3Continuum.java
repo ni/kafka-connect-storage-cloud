@@ -83,8 +83,8 @@ public class S3Continuum {
                         + "\"namespace\":\"io.confluent.connect.s3.continuum\","
                         + "\"fields\":["
                         + "{\"name\":\"filename\",\"type\":\"string\"},"
-                        + "{\"name\":\"startOffset\",\"type\":\"long\", \"default\": 0},"
-                        + "{\"name\":\"endOffset\",\"type\":\"long\", \"default\": 0},"
+                        + "{\"name\":\"startOffset\",\"type\":\"long\", \"default\": -1},"
+                        + "{\"name\":\"endOffset\",\"type\":\"long\", \"default\": -1},"
                         + "{\"name\":\"recordCount\",\"type\":\"long\"}"
                         + "]}";
         Schema.Parser parser = new Schema.Parser();
