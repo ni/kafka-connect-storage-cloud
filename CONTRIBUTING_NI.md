@@ -93,20 +93,17 @@ recommend [Intellij](https://www.jetbrains.com/idea/).
 First, pull the latest tags from upstream:
 
 ```
-
-git remote add upstream git fetch upstream --tags git push origin --tags
-
+git remote add upstream
+git fetch upstream --tags
+git push origin --tags
 ```
 
 Backup the current `master` branch, so we can revert if necessary. Append the
 most recent tag to the branch name:
 
 ```
-
-git checkout master && git pull git checkout -b
-master-archive-10.1.1-ni-<latest_version> # Most recent tag for last rebase git
-push -u origin master-archive-10.1.1-ni-<latest_version>
-
+git checkout master && git pull git checkout -b master-archive-10.1.1-ni-<latest_version> # Most recent tag for last rebase
+git push -u origin master-archive-10.1.1-ni-<latest_version>
 ```
 
 Find the latest stable release tag by referencing the changelog
@@ -115,9 +112,8 @@ Find the latest stable release tag by referencing the changelog
 Back on `master`, reset the branch to the desired upstream release tag:
 
 ```
-
-git checkout master git reset --hard v10.2
-
+git checkout master
+git reset --hard v10.2
 ```
 
 We now need to figure out which tags of `kafka-connect-storage-cloud`'s
@@ -133,13 +129,11 @@ but you will need to substitute these versions out based on the versions in the
    `kafka-connect-storage-common-parent`.:
 
 ```
-
-       <parent>
-        <groupId>io.confluent</groupId>
-        <artifactId>kafka-connect-storage-common-parent</artifactId>
-        <version>11.0.15</version>
-      </parent>
-
+<parent>
+   <groupId>io.confluent</groupId>
+   <artifactId>kafka-connect-storage-common-parent</artifactId>
+   <version>11.0.15</version>
+</parent>
 ```
 
 1. Check out the tag of `kafka-connect-storage-common` that we need to build.
@@ -148,13 +142,11 @@ but you will need to substitute these versions out based on the versions in the
    version `7.2.1` of `common`:
 
 ```
-
-       <parent>
-        <groupId>io.confluent</groupId>
-        <artifactId>common</artifactId>
-        <version>7.2.1</version>
-      </parent>
-
+<parent>
+   <groupId>io.confluent</groupId>
+   <artifactId>common</artifactId>
+   <version>7.2.1</version>
+</parent>
 ```
 
 1. The `common` version from `kafka-connect-storage-common`'s `pom.xml` gives us
@@ -196,11 +188,8 @@ but you will need to substitute these versions out based on the versions in the
 _Add CONTRIBUTING_NI and update README_.
 
 ```
-
 # git cherry-pick X^..Y where X is the first commit and Y is the latest on the archive branch you created above
-
 git cherry-pick 095cea2^..d919979
-
 ```
 
 Carefully resolve any merge conflicts. Run `git cherry-pick --skip` for any
@@ -225,9 +214,10 @@ Amazon S3. We typically run these tests against the `stratus-dev` AWS account.
    sample file:
 
 ```
-
-[default] aws_access_key_id = foo aws_secret_access_key = bar region = us-east-1
-
+[default]
+aws_access_key_id = foo
+aws_secret_access_key = bar
+region = us-east-1
 ```
 
 ### Make a private change to ni/kafka-connect-storage-cloud?
@@ -269,12 +259,9 @@ Create a branch prefixed with `ni/pub` based on the same tag that
 confluentinc/kafka-connect-storage-cloud's `master` is based on. Example:
 
 ```
-
 # Finds the most recent tag reachable from master
-
-git describe --tags --abbrev=0 master git checkout -b ni/pub/cool-new-feature
-<latest-tag>
-
+git describe --tags --abbrev=0 master
+git checkout -b ni/pub/cool-new-feature <latest-tag>
 ```
 
 Then, make your changes on this branch and open a pull request merging it into
@@ -282,7 +269,3 @@ Then, make your changes on this branch and open a pull request merging it into
 another `ni/pub/*` branch, rebase your branch on the conflicting branch and
 force push. After the changes are reviewed and accepted, the branch should be
 **squash merged** and **not** deleted.
-
-```
-
-```
