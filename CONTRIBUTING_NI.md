@@ -7,7 +7,7 @@
     - [Integrate a new release of kafka-connect-storage-cloud into the fork?](#integrate-a-new-release-of-kafka-connect-storage-cloud-into-the-fork)
     - [Run the integration tests locally?](#run-the-integration-tests-locally)
     - [Make a private change to ni/kafka-connect-storage-cloud?](#make-a-private-change-to-nikafka-connect-storage-cloud)
-    - [Get a new build of Kafka Connect Storage Cloud in the Data Frame Service?](#get-a-new-build-of-kafka-connect-storage-cloud-in-the-data-frame-service)
+    - [Get a new build of Kafka Connect Storage Cloud in the DataFrame Service?](#get-a-new-build-of-kafka-connect-storage-cloud-in-the-dataframe-service)
     - [Make a change that could be accepted upstream?](#make-a-change-that-could-be-accepted-upstream)
 
 ## Overview
@@ -47,33 +47,39 @@ creating a VM from the
 4. Install `maven`. We install an older version, as `3.8` fails builds which
    reference `http` repos:
    > `sdk install maven 3.6.3`
+5. Create `~/.aws/config` with these contents (the unit tests require an AWS
+   region to be set):
+   ```
+   [default]
+   region = us-east-1
+   ```
 
 To build this component, five other components must first be cloned and built
 locally. This only needs to be repeated when we upgrade our fork
 `kafka-connect-storage-cloud`.
 
-| Component                                                                                    | Tag            | Build command                      |
-| -------------------------------------------------------------------------------------------- | -------------- | ---------------------------------- |
-| [kafka](https://github.com/confluentinc/kafka/)                                              | `v7.2.1-6-ccs` | `./gradlewAll publishToMavenLocal` |
-| [common](https://github.com/confluentinc/common)                                             | `v7.2.1-22`    | `mvn install`                      |
-| [rest-utils](https://github.com/confluentinc/rest-utils)                                     | `v7.2.1-30`    | `mvn install`                      |
-| [schema-registry](https://github.com/confluentinc/schema-registry)                           | `v7.2.1`       | `mvn install`                      |
-| [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common) | `v11.0.15`     | `mvn install`                      |
-| [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)             | `v10.2.2-ni-0` | `mvn install -DskipITs`            |
+| Component                                                                                    | Tag             | Build command                      |
+| -------------------------------------------------------------------------------------------- | --------------- | ---------------------------------- |
+| [kafka](https://github.com/confluentinc/kafka/)                                              | `v7.2.4-12-ccs` | `./gradlewAll publishToMavenLocal` |
+| [common](https://github.com/confluentinc/common)                                             | `v7.2.4-30`     | `mvn install`                      |
+| [rest-utils](https://github.com/confluentinc/rest-utils)                                     | `v7.2.4-30`     | `mvn install`                      |
+| [schema-registry](https://github.com/confluentinc/schema-registry)                           | `v7.2.4-34`     | `mvn install`                      |
+| [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common) | `v11.0.20`      | `mvn install`                      |
+| [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)             | `v10.4.2`       | `mvn install -DskipITs`            |
 
 1. Clone and build `confluentinc/kafka`:
-   > `git clone https://github.com/confluentinc/kafka/ && cd kafka && git checkout v7.2.1-6-ccs && ./gradlewAll publishToMavenLocal`
+   > `git clone https://github.com/confluentinc/kafka/ && cd kafka && git checkout <tag> && ./gradlewAll publishToMavenLocal`
 2. Clone and build `confluentinc/common`:
-   > `git clone https://github.com/confluentinc/common && cd common && git checkout v7.2.1-22 && mvn install`
+   > `git clone https://github.com/confluentinc/common && cd common && git checkout <tag> && mvn install`
 3. Clone and build `confluentinc/rest-utils`:
-   > `git clone https://github.com/confluentinc/rest-utils && cd rest-utils && git checkout v7.2.1-30 && mvn install`
+   > `git clone https://github.com/confluentinc/rest-utils && cd rest-utils && git checkout <tag> && mvn install`
 4. Clone and build `confluentinc/schema-registry`:
-   > `git clone https://github.com/confluentinc/schema-registry && cd schema-registry && git checkout v7.2.1 && mvn install`
+   > `git clone https://github.com/confluentinc/schema-registry && cd schema-registry && git checkout <tag> && mvn install`
 5. Clone and build `kafka-connect-storage-common`:
-   > `git clone https://github.com/confluentinc/kafka-connect-storage-common && cd kafka-connect-storage-common && git checkout v11.0.15 && mvn install`
+   > `git clone https://github.com/confluentinc/kafka-connect-storage-common && cd kafka-connect-storage-common && git checkout <tag> && mvn install`
 6. Clone and build `kafka-connect-storage-cloud`:
 
-   > `git clone https://github.com/ni/kafka-connect-storage-cloud && cd kafka-connect-storage-cloud && git checkout v10.1.1-ni-0 && mvn install -DskipITs`
+   > `git clone https://github.com/ni/kafka-connect-storage-cloud && cd kafka-connect-storage-cloud && git checkout <tag> && mvn install -DskipITs`
 
    Note that the `-DskipITs` option will skip the integration tests. If you wish
    to run them, see
@@ -87,18 +93,20 @@ recommend [Intellij](https://www.jetbrains.com/idea/).
 First, pull the latest tags from upstream:
 
 ```
-git remote add upstream
-git fetch upstream --tags
-git push origin --tags
+
+git remote add upstream git fetch upstream --tags git push origin --tags
+
 ```
 
 Backup the current `master` branch, so we can revert if necessary. Append the
 most recent tag to the branch name:
 
 ```
-git checkout master && git pull
-git checkout -b master-archive-10.1.1-ni-<latest_version> # Most recent tag for last rebase
-git push -u origin master-archive-10.1.1-ni-<latest_version>
+
+git checkout master && git pull git checkout -b
+master-archive-10.1.1-ni-<latest_version> # Most recent tag for last rebase git
+push -u origin master-archive-10.1.1-ni-<latest_version>
+
 ```
 
 Find the latest stable release tag by referencing the changelog
@@ -107,8 +115,9 @@ Find the latest stable release tag by referencing the changelog
 Back on `master`, reset the branch to the desired upstream release tag:
 
 ```
-git checkout master
-git reset --hard v10.2
+
+git checkout master git reset --hard v10.2
+
 ```
 
 We now need to figure out which tags of `kafka-connect-storage-cloud`'s
@@ -119,55 +128,64 @@ but you will need to substitute these versions out based on the versions in the
 `pom.xml` that we are upgrading to.
 
 1. From [pom.xml](./pom.xml), determine which version of
-   `kafka-connect-storage-common` the sink depends on. At the time of writing,
-   we depend on `v11.0.15`:
-   ```
+   `kafka-connect-storage-common` the sink depends on. In the example below,
+   `pom.xml` tells us that we depend on `v11.0.15` of
+   `kafka-connect-storage-common-parent`.:
+
+```
+
        <parent>
         <groupId>io.confluent</groupId>
         <artifactId>kafka-connect-storage-common-parent</artifactId>
         <version>11.0.15</version>
       </parent>
-   ```
+
+```
+
 1. Check out the tag of `kafka-connect-storage-common` that we need to build.
    Inspect this component's `pom.xml` to to find the version of `common` that we
-   need to build. At the time of writing, the `pom.xml` tells us that we need to
-   build version `7.2.1` of `common`:
-   ```
+   need to build. In the example below, `pom.xml` tells us that we need to build
+   version `7.2.1` of `common`:
+
+```
+
        <parent>
         <groupId>io.confluent</groupId>
         <artifactId>common</artifactId>
         <version>7.2.1</version>
       </parent>
-   ```
+
+```
+
 1. The `common` version from `kafka-connect-storage-common`'s `pom.xml` gives us
    a rough of idea of which tags we need to check out and build for the ,
    `kafka`, `common`, `rest-utils`, and `schema-registry` dependencies. The
    process from this point requires a bit of trial and error to figure out which
    specific `v7.2.1-X` tag we need to check out for each component. The process
    is to:
-   1. Check out the latest `v7.2.1-X-ccs` tag from
-      [the kafka](https://github.com/confluentinc/kafka/) repo and attempt to
-      build it with `./gradlewAll publishToMavenLocal`. If you run into build
-      errors, try a tag with a different `X` value.
-   1. Check out the latest `v7.2.1-X` tag from
-      [the common](https://github.com/confluentinc/common) repo and attempt to
-      build it with `mvn install`. If you run into build errors, check out a tag
-      with a different `X` value. You may need to pick a different tag for
-      `kafka` and restart the tag discovery process from there.
-   1. Check out the latest `v7.2.1-X` tag from the
-      [rest-utils](https://github.com/confluentinc/rest-utils) repo and attempt
-      to build it with `mvn install`. If you run into build errors, check out a
-      tag with a different `X` value. You may need to pick a different tag for
-      `kafka` and restart the tag discovery process from there.
-   1. Check out the `v7.2.1` tag from the
-      [schema-registry](https://github.com/confluentinc/schema-registry) repo
-      and attempt to build it with `mvn install`.
-   1. Check out the `v11.0.15` tag from the
-      [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common)
-      repo and attempt to build it with `mvn install`.
-   1. Check out the `v10.2.2` tag from the
-      [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)
-      repo and attempt to build it with `mvn install -DskipITs`.
+1. Check out the latest `v7.2.1-X-ccs` tag from
+   [the kafka](https://github.com/confluentinc/kafka/) repo and attempt to build
+   it with `./gradlewAll publishToMavenLocal`. If you run into build errors, try
+   a tag with a different `X` value.
+1. Check out the latest `v7.2.1-X` tag from
+   [the common](https://github.com/confluentinc/common) repo and attempt to
+   build it with `mvn install`. If you run into build errors, check out a tag
+   with a different `X` value. You may need to pick a different tag for `kafka`
+   and restart the tag discovery process from there.
+1. Check out the latest `v7.2.1-X` tag from the
+   [rest-utils](https://github.com/confluentinc/rest-utils) repo and attempt to
+   build it with `mvn install`. If you run into build errors, check out a tag
+   with a different `X` value. You may need to pick a different tag for `kafka`
+   and restart the tag discovery process from there.
+1. Check out the `v7.2.1` tag from the
+   [schema-registry](https://github.com/confluentinc/schema-registry) repo and
+   attempt to build it with `mvn install`.
+1. Check out the `v11.0.15` tag from the
+   [kafka-connect-storage-common](https://github.com/confluentinc/kafka-connect-storage-common)
+   repo and attempt to build it with `mvn install`.
+1. Check out the `v10.2.2` tag from the
+   [kafka-connect-storage-cloud](https://github.com/ni/kafka-connect-storage-cloud)
+   repo and attempt to build it with `mvn install -DskipITs`.
 1. Run the integration tests for `kafka-connect-storage-cloud` locally. See
    [running the integration tests locally](#run-the-integration-tests-locally).
 1. Update the instructions and tags in the [table](#build-this-locally) to
@@ -175,22 +193,25 @@ but you will need to substitute these versions out based on the versions in the
 1. Cherry-pick all of our NI-specific commits from the archive branch. The first
    commit should have the message:
 
-   _Add CONTRIBUTING_NI and update README_.
+_Add CONTRIBUTING_NI and update README_.
 
-   ```
-   # git cherry-pick X^..Y where X is the first commit and Y is the latest on the archive branch you created above
-   git cherry-pick 095cea2^..d919979
-   ```
+```
 
-   Carefully resolve any merge conflicts. Run `git cherry-pick --skip` for any
-   changes that were accepted upstream since the last version bump. Once the
-   cherry pick is completed, force push `master` (`git push -f`). If you are not
-   an admin, ask one to do this step for you.
+# git cherry-pick X^..Y where X is the first commit and Y is the latest on the archive branch you created above
+
+git cherry-pick 095cea2^..d919979
+
+```
+
+Carefully resolve any merge conflicts. Run `git cherry-pick --skip` for any
+changes that were accepted upstream since the last version bump. Once the cherry
+pick is completed, force push `master` (`git push origin HEAD:master -f`). If
+you are not an admin, ask one to do this step for you.
 
 Follow the instructions in
-[Get a new build of Kafka Connect Storage Cloud in the Data Frame Service](#get-a-new-build-of-kafka-connect-storage-cloud-in-the-data-frame-service)
+[Get a new build of Kafka Connect Storage Cloud in the DataFrame Service](#get-a-new-build-of-kafka-connect-storage-cloud-in-the-data-frame-service)
 to create the initial tag for the new version of the fork and uptake it in the
-Data Frame Service.
+DataFrame Service.
 
 ### Run the integration tests locally?
 
@@ -203,12 +224,11 @@ Amazon S3. We typically run these tests against the `stratus-dev` AWS account.
    from the `nidataframe-s3-credentials` secret on `stratus-dev`. Here is a
    sample file:
 
-   ```
-   [default]
-   aws_access_key_id = foo
-   aws_secret_access_key = bar
-   region = us-east-1
-   ```
+```
+
+[default] aws_access_key_id = foo aws_secret_access_key = bar region = us-east-1
+
+```
 
 ### Make a private change to ni/kafka-connect-storage-cloud?
 
@@ -220,7 +240,7 @@ the branch should be **squash merged** and then deleted. See
 for instructions on how to get a new build of this component uptaken in the Data
 Frame Service.
 
-### Get a new build of Kafka Connect Storage Cloud in the Data Frame Service?
+### Get a new build of Kafka Connect Storage Cloud in the DataFrame Service?
 
 1. Create a new `ni` tag. The convention is to append `-ni-X` to the upstream
    tag, where `X` is incremented each time you want to make a new build. For
@@ -234,7 +254,7 @@ Frame Service.
    with the new tags.
 1. Follow the instructions in the
    [Kafka Connect Readme in AzDO](https://dev.azure.com/ni/DevCentral/_git/Skyline?path=/DataFrameService/kafkaConnectImage/README.md&version=GBmaster&line=64&lineEnd=65&lineStartColumn=1&lineEndColumn=1&lineStyle=plain&_a=contents)
-   to uptake the new image in the Data Frame Service.
+   to uptake the new image in the DataFrame Service.
 
 ### Make a change that could be accepted upstream?
 
@@ -249,9 +269,12 @@ Create a branch prefixed with `ni/pub` based on the same tag that
 confluentinc/kafka-connect-storage-cloud's `master` is based on. Example:
 
 ```
+
 # Finds the most recent tag reachable from master
-git describe --tags --abbrev=0 master
-git checkout -b ni/pub/cool-new-feature <latest-tag>
+
+git describe --tags --abbrev=0 master git checkout -b ni/pub/cool-new-feature
+<latest-tag>
+
 ```
 
 Then, make your changes on this branch and open a pull request merging it into
@@ -259,3 +282,7 @@ Then, make your changes on this branch and open a pull request merging it into
 another `ni/pub/*` branch, rebase your branch on the conflicting branch and
 force push. After the changes are reviewed and accepted, the branch should be
 **squash merged** and **not** deleted.
+
+```
+
+```
