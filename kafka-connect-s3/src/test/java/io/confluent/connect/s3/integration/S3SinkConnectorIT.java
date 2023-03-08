@@ -143,7 +143,6 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
 
   private static final String TOMBSTONE_PARTITION = "TOMBSTONE_PARTITION";
 
-  private static final List<String> KAFKA_TOPICS = Collections.singletonList(DEFAULT_TEST_TOPIC_NAME);
   private static final List<String> KAFKA_TOPICS = Arrays.asList(DEFAULT_TEST_TOPIC_NAME);
   private static final long CONSUME_MAX_DURATION_MS = TimeUnit.SECONDS.toMillis(10);
   private static final int NUM_RECORDS_INSERT = 30;
