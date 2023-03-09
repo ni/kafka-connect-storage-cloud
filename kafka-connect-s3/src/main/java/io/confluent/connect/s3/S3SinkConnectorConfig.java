@@ -958,6 +958,10 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
     return OutputWriteBehavior.WRITE.toString().equalsIgnoreCase(nullValueBehavior());
   }
 
+  public boolean isTombstoneFlushEnabled() {
+    return true; // TODO
+  }
+
   public String getTombstoneEncodedPartition() {
     return getString(TOMBSTONE_ENCODED_PARTITION);
   }

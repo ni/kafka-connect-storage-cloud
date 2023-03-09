@@ -104,6 +104,8 @@ public class TopicPartitionWriter {
   private ErrantRecordReporter reporter;
   private S3Continuum continuumProducer;
 
+  private boolean tombstoneSeen;
+
   public TopicPartitionWriter(TopicPartition tp,
                               S3Storage storage,
                               RecordWriterProvider<S3SinkConnectorConfig> writerProvider,
@@ -141,6 +143,7 @@ public class TopicPartitionWriter {
     this.partitioner = partitioner;
     this.reporter = reporter;
     this.timestampExtractor = null;
+    this.tombstoneSeen = false;
 
     if (partitioner instanceof TimeBasedPartitioner) {
       this.timestampExtractor = ((TimeBasedPartitioner) partitioner).getTimestampExtractor();
@@ -306,6 +309,15 @@ public class TopicPartitionWriter {
       String encodedPartition,
       long now
   ) {
+
+    if (tombstoneSeen) {
+      log.info("Encountered tombstone, rotating now!");
+      tombstoneSeen = false;
+      log.info("Reset tombstone seen.");
+      nextState();
+      return true;
+    }
+
     // rotateOnTime is safe to go before writeRecord, because it is acceptable
     // even for a faulty record to trigger time-based rotation if it applies
     if (rotateOnTime(encodedPartition, currentTimestamp, now)) {
@@ -385,7 +397,12 @@ public class TopicPartitionWriter {
   }
 
   public void buffer(SinkRecord sinkRecord) {
-    buffer.add(sinkRecord);
+    if (sinkRecord.value() == null && connectorConfig.isTombstoneFlushEnabled()) {
+      log.info("Encountered tombstone, setting tombstoneSeen. Previous: " + tombstoneSeen);
+      this.tombstoneSeen = true;
+    } else {
+      buffer.add(sinkRecord);
+    }
   }
 
   public Long getOffsetToCommitAndReset() {
