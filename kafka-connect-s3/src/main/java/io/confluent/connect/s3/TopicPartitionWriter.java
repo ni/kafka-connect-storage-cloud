@@ -282,7 +282,7 @@ public class TopicPartitionWriter {
             valueSchema,
             encodedPartition,
             now
-        )) {
+        ) && !tombstoneSeen) {
           break;
         }
         // fallthrough
@@ -309,23 +309,6 @@ public class TopicPartitionWriter {
       String encodedPartition,
       long now
   ) {
-
-    if (tombstoneSeen) {
-      SinkRecord projectedRecord = compatibility.project(record, null, currentValueSchema);
-      boolean validRecord = writeRecord(projectedRecord, encodedPartition);
-      buffer.poll();
-      if (!validRecord) {
-        // skip the faulty record and don't rotate
-        return false;
-      }
-      log.info("Encountered tombstone, rotating now!");
-      tombstoneSeen = false;
-      log.info("Reset tombstone seen.");
-
-      nextState();
-      return true;
-    }
-
     // rotateOnTime is safe to go before writeRecord, because it is acceptable
     // even for a faulty record to trigger time-based rotation if it applies
     if (rotateOnTime(encodedPartition, currentTimestamp, now)) {
