@@ -104,8 +104,6 @@ public class TopicPartitionWriter {
   private ErrantRecordReporter reporter;
   private S3Continuum continuumProducer;
 
-  private boolean tombstoneSeen;
-
   public TopicPartitionWriter(TopicPartition tp,
                               S3Storage storage,
                               RecordWriterProvider<S3SinkConnectorConfig> writerProvider,
@@ -143,7 +141,6 @@ public class TopicPartitionWriter {
     this.partitioner = partitioner;
     this.reporter = reporter;
     this.timestampExtractor = null;
-    this.tombstoneSeen = false;
 
     if (partitioner instanceof TimeBasedPartitioner) {
       this.timestampExtractor = ((TimeBasedPartitioner) partitioner).getTimestampExtractor();
@@ -251,6 +248,10 @@ public class TopicPartitionWriter {
         // fallthrough
       case WRITE_PARTITION_PAUSED:
         SinkRecord record = buffer.peek();
+        if (record.value() == null) {
+          buffer.poll(); // consume the tombstone
+          nextState();
+        }
         if (timestampExtractor != null) {
           currentTimestamp = timestampExtractor.extract(record, now);
           if (baseRecordTimestamp == null) {
@@ -282,7 +283,7 @@ public class TopicPartitionWriter {
             valueSchema,
             encodedPartition,
             now
-        ) && !tombstoneSeen) {
+        )) {
           break;
         }
         // fallthrough
@@ -388,12 +389,7 @@ public class TopicPartitionWriter {
   }
 
   public void buffer(SinkRecord sinkRecord) {
-    if (sinkRecord.value() == null && connectorConfig.isTombstoneFlushEnabled()) {
-      log.info("Encountered tombstone, setting tombstoneSeen. Previous: " + tombstoneSeen);
-      this.tombstoneSeen = true;
-    } else {
-      buffer.add(sinkRecord);
-    }
+    buffer.add(sinkRecord);
   }
 
   public Long getOffsetToCommitAndReset() {
