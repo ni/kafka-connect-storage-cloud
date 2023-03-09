@@ -318,6 +318,12 @@ public class TopicPartitionWriter {
       return true;
     }
 
+    if (record.value() == null) {
+      log.info("Rotating due to tombstone");
+      nextState();
+      return true;
+    }
+
     if (compatibility.shouldChangeSchema(record, null, currentValueSchema)
         && recordCount > 0) {
       // This branch is never true for the first record read by this TopicPartitionWriter
