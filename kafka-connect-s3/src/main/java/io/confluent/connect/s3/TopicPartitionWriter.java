@@ -311,9 +311,17 @@ public class TopicPartitionWriter {
   ) {
 
     if (tombstoneSeen) {
+      SinkRecord projectedRecord = compatibility.project(record, null, currentValueSchema);
+      boolean validRecord = writeRecord(projectedRecord, encodedPartition);
+      buffer.poll();
+      if (!validRecord) {
+        // skip the faulty record and don't rotate
+        return false;
+      }
       log.info("Encountered tombstone, rotating now!");
       tombstoneSeen = false;
       log.info("Reset tombstone seen.");
+
       nextState();
       return true;
     }
