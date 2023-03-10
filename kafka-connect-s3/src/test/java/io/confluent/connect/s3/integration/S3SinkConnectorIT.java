@@ -43,6 +43,7 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -77,6 +78,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import io.confluent.connect.s3.util.EmbeddedConnectUtils;
+import io.confluent.connect.s3.util.S3Utils;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -237,7 +239,18 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     testTombstoneRecordsWritten(JSON_EXTENSION, false);
   }
 
+  @Test
+  public void testRecordsWrittenOnTombstoneFlush() throws Throwable {
+    //add test specific props
+    props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
+    props.put(BEHAVIOR_ON_NULL_VALUES_CONFIG, OutputWriteBehavior.FLUSH.toString());
+    // Set a large flush size to ensure that records are only flushed when tombstones
+    // are encountered
+    props.put(FLUSH_SIZE_CONFIG, "99999");
+    testRecordsFlushedOnTombstone(PARQUET_EXTENSION,false, false);
+  }
 
+  @Test
   public void testFilesWrittenToBucketAvroWithExtInTopic() throws Throwable {
     //add test specific props
     props.put(FORMAT_CLASS_CONFIG, AvroFormat.class.getName());
@@ -264,7 +277,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     setupContinuumProperties();
     //the formatter isn't relevant here, but we'll arbitrarily use parquet
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testRecordsWritten(PARQUET_EXTENSION, false, true);
+    testRecordsWritten(PARQUET_EXTENSION, false, true, false);
   }
 
   @Test
@@ -275,7 +288,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     props.put(CONTINUUM_TOPIC_PARTITION_CONFIG, Integer.toString(CONTINUUM_TOPIC_PARTITION));
     //the formatter isn't relevant here, but we'll arbitrarily use parquet
     props.put(FORMAT_CLASS_CONFIG, ParquetFormat.class.getName());
-    testRecordsWritten(PARQUET_EXTENSION, false, true);
+    testRecordsWritten(PARQUET_EXTENSION, false, true, false);
   }
 
     /**
@@ -289,7 +302,7 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   private void testBasicRecordsWritten(String expectedFileExtension,
                                        boolean addExtensionInTopic)
           throws Throwable {
-    testRecordsWritten(expectedFileExtension, addExtensionInTopic, false);
+    testRecordsWritten(expectedFileExtension, addExtensionInTopic, false, false);
   }
 
   /**
@@ -304,7 +317,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
   private void testRecordsWritten(
           String expectedFileExtension,
           boolean addExtensionInTopic,
-          boolean verifyContinuumMessages
+          boolean verifyContinuumMessages,
+          boolean sendFlushTombstones
   ) throws Throwable {
     final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
 
@@ -333,8 +347,14 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
       // Create and send records to Kafka using the topic name in the current 'thisTopicName'
       SinkRecord sampleRecord = getSampleTopicRecord(thisTopicName, recordValueSchema, recordValueStruct);
       produceRecordsNoHeaders(NUM_RECORDS_INSERT, sampleRecord);
+      if (sendFlushTombstones) {
+        SinkRecord tombstoneRecord = getSampleTopicRecord(thisTopicName, null, null);
+        produceRecordsWithHeadersNoValue(thisTopicName, 1, tombstoneRecord);
+//        produceRecordsWithHeadersNoValue(thisTopicName, 1, getTombstoneRecord(thisTopicName));
+      }
     }
 
+    log.info("Waiting for files in S3...");
     log.info("Waiting for files in S3...");
     int countPerTopic = NUM_RECORDS_INSERT / FLUSH_SIZE_STANDARD;
     int expectedTotalFileCount = countPerTopic * topicNames.size();
@@ -407,6 +427,80 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     }
   }
 
+  private void testRecordsFlushedOnTombstone(
+          String expectedFileExtension,
+          boolean addExtensionInTopic,
+          boolean verifyContinuumMessages
+  ) throws Throwable {
+    final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
+
+    // Add an extra topic with this extension inside of the name
+    // Use a TreeSet for test determinism
+    Set<String> topicNames = new TreeSet<>(KAFKA_TOPICS);
+
+    if (addExtensionInTopic) {
+      topicNames.add(topicNameWithExt);
+      connect.kafka().createTopic(topicNameWithExt, 1);
+      props.replace(
+              "topics",
+              props.get("topics") + "," + topicNameWithExt
+      );
+    }
+
+    // start sink connector
+    connect.configureConnector(CONNECTOR_NAME, props);
+    // wait for tasks to spin up
+    EmbeddedConnectUtils.waitForConnectorToStart(connect, CONNECTOR_NAME, Math.min(topicNames.size(), MAX_TASKS));
+
+    Schema recordValueSchema = getSampleStructSchema();
+    Struct recordValueStruct = getSampleStructVal(recordValueSchema);
+
+    for (String thisTopicName : topicNames) {
+      // Create and send records to Kafka using the topic name in the current 'thisTopicName'
+      SinkRecord sampleRecord = getSampleTopicRecord(thisTopicName, recordValueSchema, recordValueStruct);
+      produceRecordsNoHeaders(NUM_RECORDS_INSERT, sampleRecord);
+      SinkRecord tombstoneRecord = getSampleTopicRecord(thisTopicName, null, null);
+      produceRecordsWithHeadersNoValue(thisTopicName, 1, tombstoneRecord);
+    }
+
+    log.info("Waiting for files in S3...");
+    int countPerTopic = 1;
+    int expectedTotalFileCount = countPerTopic * topicNames.size();
+
+    waitForFilesInBucket(TEST_BUCKET_NAME, expectedTotalFileCount);
+
+    Set<String> expectedTopicFilenames = new TreeSet<>();
+    for (String thisTopicName : topicNames) {
+      List<String> theseFiles = getExpectedFilenames(
+              thisTopicName,
+              TOPIC_PARTITION,
+              NUM_RECORDS_INSERT,
+              NUM_RECORDS_INSERT,
+              expectedFileExtension
+      );
+      assertEquals(theseFiles.size(), expectedTotalFileCount);
+      expectedTopicFilenames.addAll(theseFiles);
+    }
+    // This check will catch any duplications
+    assertEquals(expectedTopicFilenames.size(), expectedTotalFileCount);
+    // The total number of files allowed in the bucket is number of topics * # produced for each
+    // All topics should have produced the same number of files, so this check should hold.
+    assertFileNamesValid(TEST_BUCKET_NAME, new ArrayList<>(expectedTopicFilenames));
+    // Now check that all files created by the sink have the contents that were sent
+    // to the producer (they're all the same content)
+    assertTrue(fileContentsAsExpected(TEST_BUCKET_NAME, NUM_RECORDS_INSERT, recordValueStruct));
+
+    if (verifyContinuumMessages) {
+      ConsumerRecords<byte[], byte[]> newFileWrittenRecords = this.connect.kafka().consume(expectedTotalFileCount,
+              1000,
+              CONTINUUM_TOPIC_NAME);
+      assertContinuumMessagesAsExpected(newFileWrittenRecords,
+              expectedTopicFilenames,
+              FLUSH_SIZE_STANDARD,
+              CONTINUUM_TOPIC_PARTITION);
+    }
+  }
+
   private void testTombstoneRecordsWritten(
       String expectedFileExtension,
       boolean addExtensionInTopic
@@ -440,6 +534,61 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     log.info("Waiting for files in S3...");
     int countPerTopic = NUM_RECORDS_INSERT / FLUSH_SIZE_STANDARD;
     int expectedTotalFileCount = countPerTopic * topicNames.size();
+    waitForFilesInBucket(TEST_BUCKET_NAME, expectedTotalFileCount);
+
+    Set<String> expectedTopicFilenames = new TreeSet<>();
+    for (String thisTopicName : topicNames) {
+      List<String> theseFiles = getExpectedTombstoneFilenames(
+          thisTopicName,
+          TOPIC_PARTITION,
+          FLUSH_SIZE_STANDARD,
+          NUM_RECORDS_INSERT,
+          expectedFileExtension,
+          TOMBSTONE_PARTITION
+      );
+      assertEquals(theseFiles.size(), countPerTopic);
+      expectedTopicFilenames.addAll(theseFiles);
+    }
+    // This check will catch any duplications
+    assertEquals(expectedTopicFilenames.size(), expectedTotalFileCount);
+    assertFileNamesValid(TEST_BUCKET_NAME, new ArrayList<>(expectedTopicFilenames));
+    assertTrue(keyfileContentsAsExpected(TEST_BUCKET_NAME, FLUSH_SIZE_STANDARD, "\"key\""));
+  }
+
+    private void testRecordsFlushedOnTombstone(
+      String expectedFileExtension,
+      boolean addExtensionInTopic
+  ) throws Throwable {
+    final String topicNameWithExt = "other." + expectedFileExtension + ".topic." + expectedFileExtension;
+
+    // Add an extra topic with this extension inside of the name
+    // Use a TreeSet for test determinism
+    Set<String> topicNames = new TreeSet<>(KAFKA_TOPICS);
+
+    if (addExtensionInTopic) {
+      topicNames.add(topicNameWithExt);
+      connect.kafka().createTopic(topicNameWithExt, 1);
+      props.replace(
+          "topics",
+          props.get("topics") + "," + topicNameWithExt
+      );
+    }
+
+    // start sink connector
+    connect.configureConnector(CONNECTOR_NAME, props);
+    // wait for tasks to spin up
+    EmbeddedConnectUtils.waitForConnectorToStart(connect, CONNECTOR_NAME, Math.min(topicNames.size(), MAX_TASKS));
+
+    for (String thisTopicName : topicNames) {
+      // Create and send records to Kafka using the topic name in the current 'thisTopicName'
+      SinkRecord sampleRecord = getSampleTopicRecord(thisTopicName, null, null);
+      produceRecordsWithHeadersNoValue(thisTopicName, NUM_RECORDS_INSERT, sampleRecord);
+    }
+
+    log.info("Waiting for files in S3...");
+    int countPerTopic = NUM_RECORDS_INSERT / FLUSH_SIZE_STANDARD;
+    int expectedTotalFileCount = countPerTopic * topicNames.size();
+    S3Utils.waitForFilesInBucket(S3Client, TEST_BUCKET_NAME, 5, 1000);
     waitForFilesInBucket(TEST_BUCKET_NAME, expectedTotalFileCount);
 
     Set<String> expectedTopicFilenames = new TreeSet<>();
@@ -599,6 +748,18 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
     );
   }
 
+  private SinkRecord getTombstoneRecord(String topicName) {
+    return new SinkRecord(
+        topicName,
+        TOPIC_PARTITION,
+        Schema.STRING_SCHEMA,
+        null,
+        null,
+        null,
+        DEFAULT_OFFSET
+    );
+  }
+
   private SinkRecord getSampleRecord(Schema recordValueSchema, Struct recordValueStruct) {
     return getSampleTopicRecord(DEFAULT_TEST_TOPIC_NAME, recordValueSchema, recordValueStruct);
   }
@@ -708,7 +869,8 @@ public class S3SinkConnectorIT extends BaseConnectorIT {
       String destinationPath = TEST_DOWNLOAD_PATH + fileName;
       File downloadedFile = new File(destinationPath);
       log.info("Saving file to : {}", destinationPath);
-      S3Client.getObject(new GetObjectRequest(bucketName, fileName), downloadedFile);
+      ObjectMetadata foo = S3Client.getObject(new GetObjectRequest(bucketName, fileName), downloadedFile);
+      foo.getLastModified();
       List<String> keyContent = new ArrayList<>();
       try (FileReader fileReader = new FileReader(destinationPath);
           BufferedReader bufferedReader = new BufferedReader(fileReader)) {

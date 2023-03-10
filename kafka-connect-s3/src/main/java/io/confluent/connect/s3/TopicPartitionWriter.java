@@ -103,6 +103,7 @@ public class TopicPartitionWriter {
   private static final Time SYSTEM_TIME = new SystemTime();
   private ErrantRecordReporter reporter;
   private S3Continuum continuumProducer;
+  private boolean tombstoneWasBuffered;
 
   public TopicPartitionWriter(TopicPartition tp,
                               S3Storage storage,
@@ -141,6 +142,7 @@ public class TopicPartitionWriter {
     this.partitioner = partitioner;
     this.reporter = reporter;
     this.timestampExtractor = null;
+    this.tombstoneWasBuffered = false;
 
     if (partitioner instanceof TimeBasedPartitioner) {
       this.timestampExtractor = ((TimeBasedPartitioner) partitioner).getTimestampExtractor();
@@ -248,8 +250,11 @@ public class TopicPartitionWriter {
         // fallthrough
       case WRITE_PARTITION_PAUSED:
         SinkRecord record = buffer.peek();
-        if (record.value() == null) {
-          buffer.poll(); // consume the tombstone
+        if (connectorConfig.isTombstoneFlushEnabled() && record.value() == null) {
+          tombstoneWasBuffered = true;
+          log.info("Encountered tombstone");
+          buffer.poll(); // consume the tombstone (we don't want to write it)
+          // Proceed directly to the next state, as it's time to flush
           nextState();
         }
         if (timestampExtractor != null) {
@@ -318,7 +323,7 @@ public class TopicPartitionWriter {
       return true;
     }
 
-    if (record.value() == null) {
+    if (connectorConfig.isTombstoneFlushEnabled() && record.value() == null) {
       log.info("Rotating due to tombstone");
       nextState();
       return true;
@@ -672,6 +677,7 @@ public class TopicPartitionWriter {
 
       try {
         String filename = getCommitFilename(encodedPartition);
+        // todo: set flushed and reset tombstoneSeen
         continuumProducer.produce(
                 filename,
                 filename,
@@ -682,6 +688,7 @@ public class TopicPartitionWriter {
         log.error("Error publishing Continuum notification to Kafka: {}", e.getMessage());
       }
       writers.remove(encodedPartition);
+      // todo: decrement tombstone counter
       log.debug("Removed writer for '{}'", encodedPartition);
     }
   }

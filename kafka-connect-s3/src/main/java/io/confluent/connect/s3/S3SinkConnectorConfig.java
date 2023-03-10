@@ -637,13 +637,15 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
           OutputWriteBehavior.VALIDATOR,
           Importance.LOW,
           "How to handle records with a null value (i.e. Kafka tombstone records)."
-              + " Valid options are 'ignore', 'fail' and 'write'."
+              + " Valid options are 'ignore', 'fail', 'write', and 'flush'."
               + " Ignore would skip the tombstone record and fail would cause the connector task to"
               + " throw an exception."
               + " In case of the write tombstone option, the connector redirects tombstone records"
               + " to a separate directory mentioned in the config tombstone.encoded.partition."
               + " The storage of Kafka record keys is mandatory when this option is selected and"
-              + " the file for values is not generated for tombstone records.",
+              + " the file for values is not generated for tombstone records."
+              + " In case of the flush tombstone option, the connector flushes to S3 when it"
+              + " encounters tombstones. Tombstones are not written to files.",
           group,
           ++orderInGroup,
           Width.SHORT,
@@ -959,7 +961,7 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
   }
 
   public boolean isTombstoneFlushEnabled() {
-    return true; // TODO
+    return OutputWriteBehavior.FLUSH.toString().equalsIgnoreCase(nullValueBehavior());
   }
 
   public String getTombstoneEncodedPartition() {
@@ -1281,7 +1283,8 @@ public class S3SinkConnectorConfig extends StorageSinkConnectorConfig {
   public enum OutputWriteBehavior {
     IGNORE,
     FAIL,
-    WRITE;
+    WRITE,
+    FLUSH;
 
     public static final ConfigDef.Validator VALIDATOR = new EnumValidator(names());
 
